@@ -14,6 +14,7 @@ Usage:
     python main_bot.py --console
     python main_bot.py --lang en
     python main_bot.py --lang zh
+    python main_bot.py --debug
 """
 
 from macro import (
@@ -282,7 +283,19 @@ if __name__ == "__main__":
     parser.add_argument("--console", action="store_true", help="Launch console directly")
     parser.add_argument("--lang", choices=["en", "zh"], default=None, help="Language (en/zh)")
     parser.add_argument("--port", type=int, default=6800, help="Web UI port (default 6800)")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug image output to debug/ folder",
+    )
     args = parser.parse_args()
+
+    # Enable debug file output if requested
+    if args.debug:
+        from engine.ocr import enable_debug_files
+
+        enable_debug_files()
+        print("  [DEBUG] Debug image output enabled → debug/")
 
     # Step 1: Language selection
     lang: str = args.lang if args.lang else _select_language()

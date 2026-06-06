@@ -33,9 +33,17 @@ from engine.utils import log_error, log_success, log_warning, safe_print
 # 全局配置
 # ==========================================
 
-# 调试开关：设置为 True 时会在每次 OCR 调用时写入调试图片文件到当前目录
-# 用于排查 OCR 识别失败时检查预处理后的图像质量
+# 调试开关：设为 True 时会在 debug/ 目录写入 OCR 调试图片
+# 启动方式：python main_bot.py --debug  或在代码中手动设置
+# Enable: python main_bot.py --debug  (or set manually)
 DEBUG_WRITE_FILES = False
+
+
+def enable_debug_files() -> None:
+    """Enable debug image output to debug/ directory."""
+    global DEBUG_WRITE_FILES
+    DEBUG_WRITE_FILES = True
+
 
 # ==========================================
 # HSV 颜色阈值常量（全局唯一真相源）
@@ -201,12 +209,13 @@ def read_skill_points(img: np.ndarray) -> int | None:
     if roi.size == 0:
         return None
 
-    # 每次都保存 ROI 原图到 debug/ 目录（便于排查识别问题）
-    try:
-        os.makedirs("debug", exist_ok=True)
-        cv2.imwrite("debug/skill_points_roi.png", roi)
-    except Exception:
-        pass
+    # 可选：保存 ROI 原图到 debug/ 目录（便于排查识别问题）
+    if DEBUG_WRITE_FILES:
+        try:
+            os.makedirs("debug", exist_ok=True)
+            cv2.imwrite("debug/skill_points_roi.png", roi)
+        except Exception:
+            pass
 
     # 图像预处理：蓝底黑字 → 灰度 → Otsu 阈值 → 反转为黑字白底
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -223,11 +232,13 @@ def read_skill_points(img: np.ndarray) -> int | None:
     padded = cv2.copyMakeBorder(thresh, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
     upscaled = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
 
-    # 保存预处理后图片（便于排查）
-    try:
-        cv2.imwrite("debug/skill_points_processed.png", upscaled)
-    except Exception:
-        pass
+    # 可选：保存预处理后图片（便于排查）
+    if DEBUG_WRITE_FILES:
+        try:
+            os.makedirs("debug", exist_ok=True)
+            cv2.imwrite("debug/skill_points_processed.png", upscaled)
+        except Exception:
+            pass
 
     # ===== OCR 识别（PSM 6 + PSM 7 双模式，取位数最多的结果） =====
     # PSM 6（自动分割）在各种缩放/边距组合下表现最稳定。

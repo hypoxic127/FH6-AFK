@@ -167,6 +167,7 @@ def _t(key: str, lang: str) -> str:
 # Interactive selectors
 # ---------------------------------------------------------------------------
 
+
 def _select_language() -> str:
     """Display language selection menu.
 
@@ -276,9 +277,7 @@ def show_start_menu(lang: str = "en"):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="FH6 AutoBot — Full AFK Automation Tool"
-    )
+    parser = argparse.ArgumentParser(description="FH6 AutoBot — Full AFK Automation Tool")
     parser.add_argument("--web", action="store_true", help="Launch Web UI directly")
     parser.add_argument("--console", action="store_true", help="Launch console directly")
     parser.add_argument("--lang", choices=["en", "zh"], default=None, help="Language (en/zh)")
@@ -287,6 +286,11 @@ if __name__ == "__main__":
 
     # Step 1: Language selection
     lang: str = args.lang if args.lang else _select_language()
+
+    # Apply language globally for all runtime logs
+    from engine.i18n import set_lang
+
+    set_lang(lang)
 
     # Step 2: Mode selection (CLI flags take priority)
     if args.web:

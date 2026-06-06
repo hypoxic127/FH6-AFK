@@ -11,6 +11,7 @@ import numpy as np
 import pytesseract
 import vgamepad as vg
 
+from engine.i18n import t
 from engine.ocr import DEBUG_WRITE_FILES
 from engine.utils import log_info, log_success, log_warning
 from macro.core import capture_raw_screenshot, capture_screenshot
@@ -33,7 +34,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     12. 输入 B × 2（退出技能树）
     确保页面与 usepoints.png 模板画面一致
     """
-    log_info("正在执行车辆加点宏...")
+    log_info(t("upgrade.start"))
     # 宏按键延迟设置，确保 UI 渲染稳定
 
     def press(button, count=1, delay=0.8):
@@ -47,7 +48,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
 
     # 1. B × 1
 
-    log_info("  -> 选好车后等待 2.0 秒以确保稳定...")
+    log_info(t("upgrade.wait_stable"))
     time.sleep(2.0)
     log_info("  -> [1] B × 1...")
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
@@ -61,7 +62,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.2)
     # 4. 输入 D-pad Down 7次
 
-    log_info("  -> [4] 输入 D-pad Down 7次...")
+    log_info(t("upgrade.step_down7"))
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, count=7, delay=0.8)
     # 5.  A
 
@@ -133,15 +134,15 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
                 top_count = counter.most_common(1)[0][1]
                 tied = [val for val, cnt in counter.items() if cnt == top_count]
                 available_points = max(tied)
-                log_info(f"  [Available Points] OCR: {available_points} (读数: {ocr_results}, {w}x{h})")
+                log_info(t("upgrade.ap_result", pts=available_points, raw=ocr_results, w=w, h=h))
             else:
-                log_warning("  [Available Points] OCR 未识别到数字！")
+                log_warning(t("upgrade.ap_no_digit"))
 
         if available_points >= 0 and available_points < min_points:
-            log_warning(f"  ⚠️ Available Points = {available_points} < {min_points}，技能点不足！")
+            log_warning(t("upgrade.ap_low", pts=available_points, min=min_points))
             return available_points
     except Exception as e:
-        log_warning(f"  [Available Points] OCR 异常: {e}")
+        log_warning(t("upgrade.ap_error", err=e))
 
     def _check_cannot_afford(step_name):
         """检测 'Cannot Afford Perk' 弹窗并按 A 关闭"""
@@ -156,7 +157,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
         _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
         text = pytesseract.image_to_string(thresh, config="--psm 6").strip().lower()
         if "cannot" in text and "afford" in text:
-            log_warning(f"  ⚠️ [{step_name}] 检测到 'Cannot Afford Perk' 弹窗 (OCR: '{text[:50]}')，按 A 关闭...")
+            log_warning(t("upgrade.cannot_afford", step=step_name, text=text[:50]))
             press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.0)
             return True
         return False
@@ -166,26 +167,26 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     log_info("  -> [6]  A ...")
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.2)
     if _check_cannot_afford("步骤6"):
-        log_warning("  ⚠️ 技能点不足，提前结束加点宏")
+        log_warning(t("upgrade.afford_fail"))
         return available_points
     # 7. 输入 D-pad Right 1次
 
-    log_info("  -> [7] 输入 D-pad Right 1次...")
+    log_info(t("upgrade.step_right"))
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT, delay=0.8)
     # 8.  A
 
     log_info("  -> [8]  A ...")
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.2)
     if _check_cannot_afford("步骤8"):
-        log_warning("  ⚠️ 技能点不足，提前结束加点宏")
+        log_warning(t("upgrade.afford_fail"))
         return available_points
     # 9. 重复多次 (D-pad Up 1次 + A)
 
     afford_failed = False
     for j in range(3):
-        log_info(f"  -> [9] 循环 {j + 1}/3: 输入 D-pad Up 1次...")
+        log_info(t("upgrade.loop_up", n=j + 1))
         press(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, delay=0.8)
-        log_info(f"  -> [9] 循环 {j + 1}/3: 按 A 确认...")
+        log_info(t("upgrade.loop_a", n=j + 1))
         press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.2)
         if _check_cannot_afford(f"循环{j + 1}"):
             afford_failed = True
@@ -193,7 +194,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
 
     # 10. 输入 D-pad Left 1次
 
-    log_info("  -> [10] 输入 D-pad Left 1次...")
+    log_info(t("upgrade.step_left"))
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT, delay=0.8)
     # 11.  A
 
@@ -201,5 +202,5 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
     if afford_failed:
         _check_cannot_afford("步骤11")
-    log_success("车辆加点宏执行完毕！页面特征应与 usepoints.png 一致")
+    log_success(t("upgrade.done"))
     return available_points  # 返回剩余点数

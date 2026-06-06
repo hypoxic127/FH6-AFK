@@ -10,6 +10,7 @@ import pytesseract
 import vgamepad as vg
 
 import engine.ocr as module_ocr
+from engine.i18n import t
 from engine.utils import log_info, log_success, log_warning, safe_print
 from engine.utils import press_button as _press_button
 from macro.core import capture_raw_screenshot, capture_screenshot
@@ -35,7 +36,7 @@ def _scan_for_subaru_page(hwnd, gamepad, max_presses=15):
             log_success(f"    Subaru page detected! (LB x {lb_i}, OCR: '{current_brand}')")
             return True
         if lb_i % 3 == 0:
-            log_info(f"    LB x {lb_i}: 当前品牌 = '{current_brand}'")
+            log_info(t("nav.lb_brand", n=lb_i, brand=current_brand))
 
     log_warning(f"  Subaru page not found after {max_presses} LB presses")
     return False
@@ -70,7 +71,7 @@ def _ocr_detect_menu_tab(hwnd):
 
 def _ocr_wait_for_car_select(hwnd, max_poll=15):
     """OCR 轮询等待车库 'Car Select' 文字出现。"""
-    log_info("  -> 轮询检测车库界面加载 (OCR: 'Car Select')...")
+    log_info(t("nav.poll_car_select"))
     for poll_i in range(1, max_poll + 1):
         time.sleep(1.0)
         raw_poll = capture_raw_screenshot(hwnd)
@@ -82,70 +83,70 @@ def _ocr_wait_for_car_select(hwnd, max_poll=15):
         _, thresh_top = cv2.threshold(gray_top, 200, 255, cv2.THRESH_BINARY)
         text_top = pytesseract.image_to_string(thresh_top, config="--psm 7").strip().lower()
         if "car" in text_top and "selec" in text_top:
-            log_success(f"    ✅ 车库已加载！(OCR: '{text_top}'，等待 {poll_i} 秒)")
+            log_success(t("nav.car_select_ok", text=text_top, sec=poll_i))
             return True
         if poll_i % 3 == 0:
-            log_info(f"    等待中... #{poll_i}: OCR = '{text_top}'")
-    log_warning(f"  ⚠️ 等待 {max_poll} 秒仍未检测到 'Car Select'，继续...")
+            log_info(t("nav.car_select_wait", n=poll_i, text=text_top))
+    log_warning(t("nav.car_select_timeout", sec=max_poll))
     return False
 
 
 def navigate_menu_to_garage(hwnd, gamepad):
     """从主菜单导航进入车库：RB×2→A×2→等待→RB×2→Down×2→A→Down×7→A→等待→LB扫Subaru。"""
-    log_info("正在执行主菜单→车库导航宏...")
+    log_info(t("nav.menu_to_garage"))
 
-    log_info("  -> [1/10] RB × 2 切换到 MY HORIZON 标签...")
+    log_info(t("nav.step", n=1, total=10, desc="RB × 2 -> MY HORIZON"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.8)
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.8)
 
-    log_info("  -> [2/10] A × 2 选择 Return Home + 确认 Yes...")
+    log_info(t("nav.step", n=2, total=10, desc="A × 2 Return Home + Yes"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.0)
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.0)
 
-    log_info("  -> [3/10] 等待 Return Home 加载完毕...")
+    log_info(t("nav.step", n=3, total=10, desc="Wait for Return Home"))
     detected = False
     for attempt in range(30):
         time.sleep(1.0)
         matched, text = _ocr_detect_menu_tab(hwnd)
         if matched >= 1:
-            log_success(f"    检测到菜单已加载！第 {attempt + 1} 次")
+            log_success(t("nav.menu_loaded", n=attempt + 1))
             detected = True
             break
         if (attempt + 1) % 3 == 0:
-            log_info(f"  ... 第 {attempt + 1} 次 OCR: '{text[:80]}'")
+            log_info(t("nav.menu_wait", n=attempt + 1, text=text[:80]))
     if not detected:
-        log_warning("  ⚠️ 超时 30 次仍未到达 Campaign，继续...")
+        log_warning(t("nav.campaign_timeout"))
 
-    log_info("  -> [4/10] RB × 2 切换到 Cars 标签...")
+    log_info(t("nav.step", n=4, total=10, desc="RB × 2 -> Cars"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.8)
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.8)
 
-    log_info("  -> [5/10] Down × 2...")
+    log_info(t("nav.step", n=5, total=10, desc="Down × 2"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, delay=0.5)
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, delay=0.5)
 
-    log_info("  -> [6/10] A × 1 确认选择...")
+    log_info(t("nav.step", n=6, total=10, desc="A × 1 confirm"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
 
-    log_info("  -> [7/10] Down × 7...")
+    log_info(t("nav.step", n=7, total=10, desc="Down × 7"))
     for _ in range(7):
         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, delay=0.5)
 
-    log_info("  -> [8/10] A × 1 进入车库...")
+    log_info(t("nav.step", n=8, total=10, desc="A × 1 enter garage"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
 
-    log_info("  -> [9/10] 等待车库加载...")
+    log_info(t("nav.step", n=9, total=10, desc="Wait for garage"))
     _ocr_wait_for_car_select(hwnd)
 
-    log_info("  -> [10/10] LB 翻页定位 Subaru...")
+    log_info(t("nav.step", n=10, total=10, desc="LB -> Subaru"))
     _scan_for_subaru_page(hwnd, gamepad)
 
-    log_success(" 主菜单→车库导航宏完成！")
+    log_success(t("nav.menu_to_garage_done"))
 
 
 def safe_exit_to_menu(hwnd, gamepad):
     """OCR 视觉刹车：循环按 B 退回，OCR 检测标签栏关键词 >= 2 个即确认到达主菜单。"""
-    log_info("正在执行视觉刹车 safe_exit_to_menu()...")
+    log_info(t("nav.safe_exit"))
 
     for loop_idx in range(1, 9):
         resized, _, _, _, _ = capture_screenshot(hwnd)
@@ -171,45 +172,45 @@ def safe_exit_to_menu(hwnd, gamepad):
                 ]
                 matched_count = sum(1 for kw in menu_keywords if kw in text)
                 if matched_count >= 2:
-                    log_success(f"[视觉刹车] ✅ 检测到菜单标签 (匹配 {matched_count} 个)，成功退回主菜单！")
-                    safe_print("✅ 已退回主菜单")
+                    log_success(t("nav.brake_ok", count=matched_count))
+                    safe_print(t("nav.brake_done"))
                     return True
-                log_info(f"  [视觉刹车 {loop_idx}/8] OCR: '{text[:60]}' (匹配 {matched_count} 个)")
+                log_info(t("nav.brake_progress", n=loop_idx, text=text[:60], count=matched_count))
             except Exception as e:
-                log_warning(f"  [视觉刹车] OCR 异常: {e}")
+                log_warning(t("nav.brake_error", err=e))
 
-        log_warning("[视觉刹车] 未看到菜单标签栏，按下 B 键...")
+        log_warning(t("nav.brake_b"))
         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=0)
         time.sleep(2.0)
 
-    raise TimeoutError("连续 8 次视觉刹车仍未回到主菜单！")
+    raise TimeoutError(t("nav.brake_timeout"))
 
 
 def return_to_garage(hwnd, gamepad):
     """完整返回车库流程：视觉刹车→Down→A→Down×7→A→等待→LB扫Subaru。"""
-    log_info("正在执行返回车库流程 return_to_garage()...")
+    log_info(t("nav.return_garage"))
 
     safe_exit_to_menu(hwnd, gamepad)
 
-    log_info("  -> 等待主菜单 UI 稳定...")
+    log_info(t("nav.wait_stable"))
     time.sleep(1.0)
 
-    log_info("  -> Down × 1...")
+    log_info(t("nav.down_1"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, delay=0.5)
 
-    log_info("  -> A × 1 确认选择...")
+    log_info(t("nav.a_confirm"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
 
-    log_info("  -> Down × 7...")
+    log_info(t("nav.down_7"))
     for _ in range(7):
         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, delay=0.5)
 
-    log_info("  -> A × 1 进入车库...")
+    log_info(t("nav.a_enter_garage"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
 
     _ocr_wait_for_car_select(hwnd)
 
-    log_info("  -> LB 翻页定位 Subaru...")
+    log_info(t("nav.lb_subaru"))
     _scan_for_subaru_page(hwnd, gamepad)
 
     log_success(" return_to_garage() complete!")

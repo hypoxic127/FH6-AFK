@@ -94,7 +94,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "MSS screenshot instance reset",
         "zh": "MSS 截图实例已重置",
     },
-
     # ==================================================================
     #  farm/skills.py — main entry
     # ==================================================================
@@ -166,7 +165,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Failed to clear race state file: {err}",
         "zh": "清除比赛状态文件失败: {err}",
     },
-
     # farm/skills.py — saved state resume
     "farm.resume_title": {
         "en": "   [RESUMING FROM SAVED STATE]",
@@ -184,7 +182,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "   (Will scan CARS tab for fresh skill points)",
         "zh": "   (将扫描 CARS 标签页获取最新技能点)",
     },
-
     # farm/skills.py — racing
     "farm.racing_rt": {
         "en": "[RACING] Holding Right Trigger (RT) to accelerate... Scanning for race end...",
@@ -242,7 +239,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "   Returned to Menu successfully.",
         "zh": "   已成功返回菜单。",
     },
-
     # farm/skills.py — startup guard & recovery
     "farm.startup_guard": {
         "en": "[STARTUP SAFEGUARD] Detected gameplay screen. Pressing START to open pause menu...",
@@ -260,7 +256,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "[SAFETY GUARD] Active state: {state}, but skill points NOT scanned yet! Pressing B to back out...",
         "zh": "[安全守卫] 当前状态: {state}，但技能点尚未扫描！按 B 返回...",
     },
-
     # farm/skills.py — menu states
     "farm.cars_scan": {
         "en": "[STATE: CARS] Arrived at CARS tab! Scanning skill points...",
@@ -394,7 +389,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "State Machine safety timeout: ran for {hours:.1f} hours without completing all races.",
         "zh": "状态机安全超时: 已运行 {hours:.1f} 小时，仍未完成所有比赛。",
     },
-
     # ==================================================================
     #  OCR messages (engine/ocr.py)
     # ==================================================================
@@ -414,7 +408,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Tesseract is available in system PATH.",
         "zh": "Tesseract 可在系统 PATH 中找到。",
     },
-
     # ==================================================================
     #  macro/master_loop.py
     # ==================================================================
@@ -430,7 +423,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "--- Cycle #{count} ---",
         "zh": "--- 循环回路 #{count} ---",
     },
-
     # Buy phase
     "loop.buy_desc": {
         "en": "Buying {count} cars",
@@ -472,7 +464,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "✅ Buy phase completed (single run)",
         "zh": "✅ 买车阶段完成（单次模式）",
     },
-
     # Upgrade phase
     "loop.upgrade_desc": {
         "en": "Upgrading NEW cars in garage one by one...",
@@ -502,7 +493,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "✅ Upgrade phase completed (single run)",
         "zh": "✅ 加点阶段完成（单次模式）",
     },
-
     # Trash phase
     "loop.trash_desc": {
         "en": "Removing upgraded Impreza vehicles...",
@@ -516,7 +506,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "✅ Trash phase completed (single run)",
         "zh": "✅ 卖车阶段完成（单次模式）",
     },
-
     # Farm phase
     "loop.farm_desc": {
         "en": "Skill points exhausted, starting auto-farm mode",
@@ -542,7 +531,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Retrying farm phase in 5 seconds...",
         "zh": "尝试等待 5 秒后重新开始刷图阶段...",
     },
-
     # Verification sub-flow
     "loop.verify_restore": {
         "en": "  [Verify] Restoring window focus and screenshot context...",
@@ -604,7 +592,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "✅ Farm phase completed (single run)",
         "zh": "✅ 刷点阶段完成（单次模式）",
     },
-
     # Errors & interrupts
     "loop.state_error": {
         "en": "Error in state {state}: {err}",
@@ -630,7 +617,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Forza Horizon 6 window not found!",
         "zh": "未找到 Forza Horizon 6 窗口！",
     },
-
     # General / shared
     "general.b_x": {
         "en": "  -> B × {n}...",
@@ -688,7 +674,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "  -> B × 2 exit garage...",
         "zh": "  -> B × 2 退出车库...",
     },
-
     # Keys used in master_loop.py that weren't in the original table
     "loop.upgrade_enter": {
         "en": "Selected car #{n}, entering detail page. Running upgrade macro...",
@@ -757,5 +742,743 @@ _STRINGS: dict[str, dict[str, str]] = {
     "general.select_main_a": {
         "en": "  -> A × 1 select main car...",
         "zh": "  -> A × 1 选中主力车...",
+    },
+    # ==================================================================
+    #  macro/upgrade.py
+    # ==================================================================
+    "upgrade.start": {
+        "en": "Running car skill upgrade macro...",
+        "zh": "正在执行车辆加点宏...",
+    },
+    "upgrade.wait_stable": {
+        "en": "  -> Waiting 2.0s after selecting car for stability...",
+        "zh": "  -> 选好车后等待 2.0 秒以确保稳定...",
+    },
+    "upgrade.step_down7": {
+        "en": "  -> [4] D-pad Down × 7...",
+        "zh": "  -> [4] 输入 D-pad Down 7次...",
+    },
+    "upgrade.ap_result": {
+        "en": "  [Available Points] OCR: {pts} (readings: {raw}, {w}x{h})",
+        "zh": "  [Available Points] OCR: {pts} (读数: {raw}, {w}x{h})",
+    },
+    "upgrade.ap_no_digit": {
+        "en": "  [Available Points] OCR did not detect any digits!",
+        "zh": "  [Available Points] OCR 未识别到数字！",
+    },
+    "upgrade.ap_low": {
+        "en": "  ⚠️ Available Points = {pts} < {min}, insufficient skill points!",
+        "zh": "  ⚠️ Available Points = {pts} < {min}，技能点不足！",
+    },
+    "upgrade.ap_error": {
+        "en": "  [Available Points] OCR error: {err}",
+        "zh": "  [Available Points] OCR 异常: {err}",
+    },
+    "upgrade.cannot_afford": {
+        "en": "  ⚠️ [{step}] Detected 'Cannot Afford Perk' popup (OCR: '{text}'), pressing A to close...",
+        "zh": "  ⚠️ [{step}] 检测到 'Cannot Afford Perk' 弹窗 (OCR: '{text}')，按 A 关闭...",
+    },
+    "upgrade.afford_fail": {
+        "en": "  ⚠️ Insufficient skill points, ending upgrade macro early",
+        "zh": "  ⚠️ 技能点不足，提前结束加点宏",
+    },
+    "upgrade.step_right": {
+        "en": "  -> [7] D-pad Right × 1...",
+        "zh": "  -> [7] 输入 D-pad Right 1次...",
+    },
+    "upgrade.loop_up": {
+        "en": "  -> [9] Loop {n}/3: D-pad Up × 1...",
+        "zh": "  -> [9] 循环 {n}/3: 输入 D-pad Up 1次...",
+    },
+    "upgrade.loop_a": {
+        "en": "  -> [9] Loop {n}/3: Press A to confirm...",
+        "zh": "  -> [9] 循环 {n}/3: 按 A 确认...",
+    },
+    "upgrade.step_left": {
+        "en": "  -> [10] D-pad Left × 1...",
+        "zh": "  -> [10] 输入 D-pad Left 1次...",
+    },
+    "upgrade.done": {
+        "en": "Car skill upgrade macro completed! Page should match usepoints.png",
+        "zh": "车辆加点宏执行完毕！页面特征应与 usepoints.png 一致",
+    },
+    # ==================================================================
+    #  macro/garage.py
+    # ==================================================================
+    "garage.dp_found": {
+        "en": "  ✅ Detected 'Designs and Paints' (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到 'Designs and Paints' (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.dp_waiting": {
+        "en": "  Waiting for Designs and Paints... #{n}: OCR='{text}'",
+        "zh": "  等待 Designs and Paints... #{n}: OCR='{text}'",
+    },
+    "garage.dp_timeout": {
+        "en": "  ⚠️ Did not detect 'Designs and Paints' within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 'Designs and Paints'",
+    },
+    "garage.cars_found": {
+        "en": "  ✅ Detected 'My Cars' (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到 'My Cars' (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.cars_waiting": {
+        "en": "  Waiting for My Cars... #{n}: OCR='{text}'",
+        "zh": "  等待 My Cars... #{n}: OCR='{text}'",
+    },
+    "garage.cars_timeout": {
+        "en": "  ⚠️ Did not detect 'My Cars' within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 'My Cars'",
+    },
+    "garage.anna_found": {
+        "en": "  ✅ Free roam detected (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到自由漫游界面 (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.anna_waiting": {
+        "en": "  Waiting for free roam (ANNA/LINK)... #{n}: OCR='{text}'",
+        "zh": "  等待自由漫游 (ANNA/LINK)... #{n}: OCR='{text}'",
+    },
+    "garage.anna_timeout": {
+        "en": "  ⚠️ Did not detect ANNA/LINK within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 ANNA/LINK",
+    },
+    "garage.grid_start": {
+        "en": "Starting garage grid navigation: {label}...",
+        "zh": "正在启动车库网格导航: {label}...",
+    },
+    "garage.grid_resume": {
+        "en": "  Resuming from column {col} row {row}",
+        "zh": "  从第 {col} 列第 {row} 行继续扫描",
+    },
+    "garage.grid_mode": {
+        "en": "  Traverse mode: Typewriter scan (column by column, top to bottom, reset then right)",
+        "zh": "  遍历模式: 打字机走位（逐列从上到下，复位后右移）",
+    },
+    "garage.fast_forward": {
+        "en": "  ⏩ Fast forward: pressing Right {n} times to jump to column {col}...",
+        "zh": "  ⏩ 快进: 按 {n} 次 Right 跳到第 {col} 列...",
+    },
+    "garage.scan_col": {
+        "en": "  📋 Scanning column {col}...",
+        "zh": "  📋 正在扫描第 {col} 列...",
+    },
+    "garage.fast_down": {
+        "en": "  ⏩ Fast forward: pressing Down {n} times to jump to row {row}...",
+        "zh": "  ⏩ 快进: 按 {n} 次 Down 跳到第 {row} 行...",
+    },
+    "garage.no_cursor": {
+        "en": "    [Row {row}] Cannot detect cursor",
+        "zh": "    [行{row}] 无法检测到光标",
+    },
+    "garage.cursor_pos": {
+        "en": "    [Row {row}] Cursor position: ({cx}, {cy})",
+        "zh": "    [行{row}] 光标位置: ({cx}, {cy})",
+    },
+    "garage.empty_slot": {
+        "en": "    [Row {row}] 🔲 Empty slot detected, skipping",
+        "zh": "    [行{row}] 🔲 检测到空位，跳过",
+    },
+    "garage.empty_col": {
+        "en": "    [Row {row}] Row 1 is empty, skipping entire column",
+        "zh": "    [行{row}] 第 1 行即为空位，跳过整列",
+    },
+    "garage.brand_done": {
+        "en": "    [Row {row}] Empty slot detected, brand region fully scanned, stopping",
+        "zh": "    [行{row}] 检测到空位，品牌区域已扫完，停止扫描",
+    },
+    "garage.reset_up": {
+        "en": "  ⬆️ Reset: pressing Up {n} times to return to row 1...",
+        "zh": "  ⬆️ 复位: 按 {n} 次 Up 回到第 1 行...",
+    },
+    "garage.verify_pass": {
+        "en": "    [Row {row}] ✅ {label} verification passed! Pressing A to enter details... (col {col}, row {row})",
+        "zh": "    [行{row}] ✅ {label} 校验通过！按 A 进入详情... (列{col}, 行{row})",
+    },
+    "garage.verify_fail": {
+        "en": "    [Row {row}] Verification failed, skipping (total skipped: {total})",
+        "zh": "    [行{row}] 校验未通过，跳过 (累计跳过: {total})",
+    },
+    "garage.enter_legendary": {
+        "en": "    [Zone Detection] 🟠 Entered LEGENDARY zone (orange: {px}px)",
+        "zh": "    [区域检测] 🟠 进入 LEGENDARY 区域 (橙色: {px}px)",
+    },
+    "garage.non_legendary": {
+        "en": "    [Zone Detection] Non-LEGENDARY card (consecutive {n}/{max})",
+        "zh": "    [区域检测] 非 LEGENDARY 卡片 (连续 {n}/{max})",
+    },
+    "garage.has_below": {
+        "en": "    [Row {row}] Car below, pressing D-pad Down...",
+        "zh": "    [行{row}] 下方有车，按 D-pad Down...",
+    },
+    "garage.no_below": {
+        "en": "    [Row {row}] Empty below, stopping column scan",
+        "zh": "    [行{row}] 下方为空位，停止本列向下扫描",
+    },
+    "garage.left_zone": {
+        "en": "  🏁 Left Impreza zone (consecutive {n} non-Impreza), stopping scan!",
+        "zh": "  🏁 已离开 Impreza 区域 (连续 {n} 个非 Impreza)，停止扫描！",
+    },
+    "garage.next_col": {
+        "en": "  ➡️ Pressing Right to move to column {col}...",
+        "zh": "  ➡️ 按 Right 移到第 {col} 列...",
+    },
+    "garage.max_cols": {
+        "en": "  Scanned {n} columns, no more {label} found",
+        "zh": "  已扫描 {n} 列，未找到更多 {label}",
+    },
+    "garage.last_pos": {
+        "en": "  📍 Last position: col {col}, row {row}",
+        "zh": "  📍 上次位置: 列{col}, 行{row}",
+    },
+    "garage.save_pos": {
+        "en": "  📍 Saved position: col {col}, row {row}",
+        "zh": "  📍 记录位置: 列{col}, 行{row}",
+    },
+    "garage.pos_reset": {
+        "en": "  📍 Upgrade position reset to col 1, row 1",
+        "zh": "  📍 加点位置已重置为 列1, 行1",
+    },
+    "garage.delete_start": {
+        "en": "Starting stateful deletion scan...",
+        "zh": "正在启动带状态机的删车扫描...",
+    },
+    "garage.delete_col": {
+        "en": "  📋 [Delete] Scanning column {col}...",
+        "zh": "  📋 [删车] 正在扫描第 {col} 列...",
+    },
+    "garage.has_new_skip": {
+        "en": "  ⚠️ This car still has NEW tag (not upgraded), skipping...",
+        "zh": "  ⚠️ 该车仍有 NEW 标签（未加点），跳过...",
+    },
+    "garage.high_class_skip": {
+        "en": "  ⚠️ This car is S1/S2 class (main car), skipping!",
+        "zh": "  ⚠️ 该车是 S1/S2 级别（主力车），跳过！",
+    },
+    "garage.card_confirmed": {
+        "en": "  ✅ Card OCR confirmed: keywords {n}/3 {matched}",
+        "zh": "  ✅ 卡片 OCR 确认: 关键词 {n}/3 {matched}",
+    },
+    "garage.card_mismatch": {
+        "en": "  ⚠️ Card OCR did not match Impreza 22B (hit {n}/3 {matched}, OCR: '{text}'), skipping!",
+        "zh": "  ⚠️ 卡片 OCR 未匹配 Impreza 22B (命中 {n}/3 {matched}, OCR: '{text}')，跳过！",
+    },
+    "garage.card_error": {
+        "en": "  ⚠️ Card OCR error: {err}, safely skipping",
+        "zh": "  ⚠️ 卡片 OCR 异常: {err}，安全跳过",
+    },
+    "garage.empty_row1": {
+        "en": "    [Row {row}] Row 1 empty, skipping column",
+        "zh": "    [行{row}] 第 1 行空位，跳过整列",
+    },
+    "garage.empty_brand": {
+        "en": "    [Row {row}] Empty, brand region fully scanned",
+        "zh": "    [行{row}] 空位，品牌区域已扫完",
+    },
+    "garage.removable": {
+        "en": "    [Row {row}] ✅ Removable! Pressing A to enter details...",
+        "zh": "    [行{row}] ✅ 可删除！按 A 进入详情...",
+    },
+    "garage.state_fix": {
+        "en": "  [State Fix] Before delete: (row {old_r}, col {old_c}) → cursor at: (row {new_r}, col {new_c})",
+        "zh": "  [状态修正] 删除前: (行{old_r}, 列{old_c}) → 光标退到: (行{new_r}, 列{new_c})",
+    },
+    "garage.restore_down": {
+        "en": "  [Restore] Pressing Down to advance to row {row}...",
+        "zh": "  [恢复] 按 Down 前进到行{row}...",
+    },
+    "garage.restore_cross": {
+        "en": "  [Restore] Cross-column rollback: Right → Up×2 to return to row 1...",
+        "zh": "  [恢复] 跨列回退：按 Right → Up×2 回到第 1 行...",
+    },
+    "garage.delete_skip": {
+        "en": "    [Row {row}] Verification failed, skipping",
+        "zh": "    [行{row}] 校验未通过，跳过",
+    },
+    "garage.delete_down": {
+        "en": "    [Row {row}] Car below, pressing Down...",
+        "zh": "    [行{row}] 下方有车，按 Down...",
+    },
+    "garage.delete_no_below": {
+        "en": "    [Row {row}] Empty below",
+        "zh": "    [行{row}] 下方为空位",
+    },
+    "garage.empty_cols_stop": {
+        "en": "  {n} consecutive columns with no target, brand region done.",
+        "zh": "  连续 {n} 列无目标，品牌区域扫完。",
+    },
+    "garage.brand_leave": {
+        "en": "  🛑 Selected tab: '{text}', left Subaru region",
+        "zh": "  🛑 选中标签: '{text}'，已离开 Subaru 区域",
+    },
+    "garage.delete_done": {
+        "en": "  Scanned {n} columns, deletion complete.",
+        "zh": "  已扫描 {n} 列，删车完成。",
+    },
+    "garage.remove_has_new": {
+        "en": "  ⚠️ This car still has NEW tag (not upgraded), must keep, skipping...",
+        "zh": "  ⚠️ 该车仍有 NEW 标签（未加点），需保留，跳过...",
+    },
+    "garage.remove_high_class": {
+        "en": "  ⚠️ This car is S1/S2 class (user's main car), skipping!",
+        "zh": "  ⚠️ 该车是 S1/S2 级别（用户主力车），跳过！",
+    },
+    "garage.remove_ok": {
+        "en": "    No NEW tag and B-class, removable!",
+        "zh": "    无 NEW 标签且为 B 级，可以移除！",
+    },
+    "garage.removing": {
+        "en": "🗑️ Removing car #{n}...",
+        "zh": "🗑️ 正在移除第 {n} 辆车...",
+    },
+    "garage.remove_confirm_down": {
+        "en": "  -> D-pad Down: switch to confirm button...",
+        "zh": "  -> D-pad Down：切换到确认按钮...",
+    },
+    "garage.remove_confirm_a": {
+        "en": "  -> A: Confirm removal!",
+        "zh": "  -> A：确认移除！",
+    },
+    "garage.remove_done": {
+        "en": "  ✅ Car #{n} successfully removed from garage!",
+        "zh": "  ✅ 第 {n} 辆车已成功从车库移除！",
+    },
+    "garage.main_start": {
+        "en": "Starting garage grid navigation: main car search...",
+        "zh": "正在启动车库网格导航: 主力车搜索...",
+    },
+    "garage.main_mode": {
+        "en": "  Scan mode: per-cell PI color detection (no template matching)",
+        "zh": "  扫描模式: 逐格 PI 颜色检测（不依赖模板匹配）",
+    },
+    "garage.main_empty": {
+        "en": "    [Row {row}] 🔲 Empty, skipping",
+        "zh": "    [行{row}] 🔲 空位，跳过",
+    },
+    "garage.main_card_ok": {
+        "en": "    [Row {row}] ✅ Card OCR confirmed: keywords {n}/3 {matched}",
+        "zh": "    [行{row}] ✅ 卡片 OCR 确认: 关键词 {n}/3 {matched}",
+    },
+    "garage.main_card_skip": {
+        "en": "    [Row {row}] ⚠️ S2 but not target car (hit {n}/3 {matched}, OCR: '{text}'), skipping",
+        "zh": "    [行{row}] ⚠️ S2 但非目标车 (命中 {n}/3 {matched}, OCR: '{text}')，跳过",
+    },
+    "garage.main_card_err": {
+        "en": "    [Row {row}] ⚠️ Card OCR error: {err}",
+        "zh": "    [行{row}] ⚠️ 卡片 OCR 异常: {err}",
+    },
+    "garage.main_found": {
+        "en": "    [Row {row}] ✅ Found main car (S2 + Impreza 22B)! Pressing A... (col {col}, row {row})",
+        "zh": "    [行{row}] ✅ 找到主力车（S2 + Impreza 22B）！按 A 进入详情... (列{col}, 行{row})",
+    },
+    "garage.main_s_skip": {
+        "en": "    [Row {row}] S-class but not target, skipping...",
+        "zh": "    [行{row}] S 级但非目标车，跳过...",
+    },
+    "garage.main_b_skip": {
+        "en": "    [Row {row}] B-class car, skipping...",
+        "zh": "    [行{row}] B 级车，跳过...",
+    },
+    "garage.main_empty_stop": {
+        "en": "  {n} consecutive empty columns, stopping scan.",
+        "zh": "  连续 {n} 列无车，停止扫描。",
+    },
+    "garage.main_not_found": {
+        "en": "  ⚠️ S1/S2 main car not found!",
+        "zh": "  ⚠️ 未找到 S1/S2 主力车！",
+    },
+    "garage.get_in_car": {
+        "en": "  ✅ Got in car!",
+        "zh": "  ✅ 已上车！",
+    },
+    # ==================================================================
+    #  macro/purchase.py — remaining keys
+    # ==================================================================
+    "buy.ocr_locked": {
+        "en": "OCR (PSM {psm}) detected '{word}'! Screen coords: ({x}, {y})",
+        "zh": "OCR (PSM {psm}) 检测到 '{word}'！屏幕坐标: ({x}, {y})",
+    },
+    "buy.target_not_found": {
+        "en": "  [!] Left text does not contain '{target}', skipping...",
+        "zh": "  [!] 左侧文字中不含 '{target}'，跳过...",
+    },
+    "buy.roi_empty": {
+        "en": "  [!] Left crop region has zero size",
+        "zh": "  [!] 裁剪区域左侧大小为 0",
+    },
+    "buy.cursor_low": {
+        "en": "  [!] Highlight border pixel ratio below 0.5, skipping...",
+        "zh": "  [!] 高亮边框像素占比低于 0.5，跳过...",
+    },
+    "buy.tracker_coords": {
+        "en": "  Coords -> Cursor: ({cx}, {cy}) | Target: ({tx}, {ty}) | Offset: (dx={dx}, dy={dy}) (tolerance: {tol}px)",
+        "zh": "  坐标 -> 光标: ({cx}, {cy}) | 目标: ({tx}, {ty}) | 偏差: (dx={dx}, dy={dy}) (容差: {tol}px)",
+    },
+    "buy.target_locked": {
+        "en": "Target locked! Breaking out of tracking loop",
+        "zh": "目标已锁定！跳出追踪循环",
+    },
+    "buy.oscillation": {
+        "en": "  ⚠️ [Deadlock Defense] Control oscillation detected! Force locking!",
+        "zh": "  ⚠️ [死循环防御] 检测到控制震荡！强制锁定！",
+    },
+    "buy.move_right": {
+        "en": "  ⚡ Target is to the right, D-pad Right",
+        "zh": "  ⚡ 目标在右侧，D-pad Right",
+    },
+    "buy.move_left": {
+        "en": "  ⚡ Target is to the left, D-pad Left",
+        "zh": "  ⚡ 目标在左侧，D-pad Left",
+    },
+    "buy.move_down": {
+        "en": "  ⚡ Target is below, D-pad Down",
+        "zh": "  ⚡ 目标在下方，D-pad Down",
+    },
+    "buy.move_up": {
+        "en": "  ⚡ Target is above, D-pad Up",
+        "zh": "  ⚡ 目标在上方，D-pad Up",
+    },
+    "buy.pos_verify": {
+        "en": "Starting position verification...",
+        "zh": "正在启动位置校验确认程序...",
+    },
+    "buy.pos_ocr": {
+        "en": "  [Position Check] OCR read: '{text}'",
+        "zh": "  [位置校验] OCR 读取内容: '{text}'",
+    },
+    "buy.pos_confirmed": {
+        "en": "  Verified: read ('22B'/'IMPREZA'), confirmed correct!",
+        "zh": "  校验确认：读取到 ('22B'/'IMPREZA')，确认无误！",
+    },
+    "buy.pos_mismatch": {
+        "en": "Position mismatch, aborting navigation",
+        "zh": "位置不符，终止导航",
+    },
+    "buy.confirm_a": {
+        "en": "  -> [Confirm] Pressing A to enter...",
+        "zh": "  -> [确认阶段] 按 A 以确认进入...",
+    },
+    "buy.nav_timeout": {
+        "en": "  [!] Navigation timeout: {path}",
+        "zh": "  [!] 导航超时: {path}",
+    },
+    "buy.buy_start": {
+        "en": "Executing purchase: starting car {n}/{total}...",
+        "zh": "正在执行购买流程：开始购买第 {n}/{total} 辆车...",
+    },
+    "buy.buy_start_menu": {
+        "en": "  -> START open purchase menu...",
+        "zh": "  -> START 打开购买菜单...",
+    },
+    "buy.buy_down": {
+        "en": "  -> D-pad Down...",
+        "zh": "  -> D-pad Down...",
+    },
+    "buy.buy_done": {
+        "en": "Car {n}/{total} purchase commands sent successfully!",
+        "zh": "第 {n}/{total} 辆车购买指令全部发送成功！",
+    },
+    "buy.cc_ocr_mismatch": {
+        "en": "Car Collection OCR mismatch (text: '{text}')",
+        "zh": "Car Collection OCR 未匹配 (text: '{text}')",
+    },
+    "buy.cc_page_ok": {
+        "en": "Car Collection Page loaded! (OCR: '{text}')",
+        "zh": "Car Collection Page 页面加载确认！(OCR: '{text}')",
+    },
+    "buy.subaru_ocr_mismatch": {
+        "en": "Subaru OCR mismatch (text: '{text}')",
+        "zh": "Subaru OCR 未匹配 (text: '{text}')",
+    },
+    "buy.impreza_ocr_mismatch": {
+        "en": "Impreza OCR mismatch (text: '{text}')",
+        "zh": "Impreza OCR 未匹配 (text: '{text}')",
+    },
+    # ── garage.py ──────────────────────────────────────────────────
+    # --- wait helpers ---
+    "garage.dp_found": {
+        "en": "  ✅ Detected 'Designs and Paints' (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到 'Designs and Paints' (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.dp_waiting": {
+        "en": "  Waiting for Designs and Paints... #{n}: OCR='{text}'",
+        "zh": "  等待 Designs and Paints... #{n}: OCR='{text}'",
+    },
+    "garage.dp_timeout": {
+        "en": "  ⚠️ 'Designs and Paints' not detected within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 'Designs and Paints'",
+    },
+    "garage.cars_found": {
+        "en": "  ✅ Detected 'My Cars' (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到 'My Cars' (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.cars_waiting": {
+        "en": "  Waiting for My Cars... #{n}: OCR='{text}'",
+        "zh": "  等待 My Cars... #{n}: OCR='{text}'",
+    },
+    "garage.cars_timeout": {
+        "en": "  ⚠️ 'My Cars' not detected within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 'My Cars'",
+    },
+    "garage.anna_found": {
+        "en": "  ✅ Detected free roam UI (OCR: '{text}', waited {sec}s)",
+        "zh": "  ✅ 检测到自由漫游界面 (OCR: '{text}'，等待 {sec}s)",
+    },
+    "garage.anna_waiting": {
+        "en": "  Waiting for free roam (ANNA/LINK)... #{n}: OCR='{text}'",
+        "zh": "  等待自由漫游 (ANNA/LINK)... #{n}: OCR='{text}'",
+    },
+    "garage.anna_timeout": {
+        "en": "  ⚠️ ANNA/LINK not detected within {sec}s",
+        "zh": "  ⚠️ {sec}s 内未检测到 ANNA/LINK",
+    },
+    # --- grid navigation ---
+    "garage.grid_start": {
+        "en": "Starting garage grid navigation: {label}...",
+        "zh": "正在启动车库网格导航: {label}...",
+    },
+    "garage.grid_resume": {
+        "en": "  Resuming from column {col}, row {row}",
+        "zh": "  从第 {col} 列第 {row} 行继续扫描",
+    },
+    "garage.grid_mode": {
+        "en": "  Traversal mode: typewriter (column-by-column top-to-bottom, reset then right)",
+        "zh": "  遍历模式: 打字机走位（逐列从上到下，复位后右移）",
+    },
+    "garage.fast_forward": {
+        "en": "  ⏩ Fast-forward: pressing Right {n} times to column {col}...",
+        "zh": "  ⏩ 快进: 按 {n} 次 Right 跳到第 {col} 列...",
+    },
+    "garage.scan_col": {
+        "en": "  📋 Scanning column {col}...",
+        "zh": "  📋 正在扫描第 {col} 列...",
+    },
+    "garage.fast_down": {
+        "en": "  ⏩ Fast-forward: pressing Down {n} times to row {row}...",
+        "zh": "  ⏩ 快进: 按 {n} 次 Down 跳到第 {row} 行...",
+    },
+    "garage.no_cursor": {
+        "en": "    [Row {row}] Cannot detect cursor",
+        "zh": "    [行{row}] 无法检测到光标",
+    },
+    "garage.cursor_pos": {
+        "en": "    [Row {row}] Cursor position: ({cx}, {cy})",
+        "zh": "    [行{row}] 光标位置: ({cx}, {cy})",
+    },
+    "garage.empty_slot": {
+        "en": "    [Row {row}] 🔲 Empty slot detected, skip",
+        "zh": "    [行{row}] 🔲 检测到空位，跳过",
+    },
+    "garage.empty_col": {
+        "en": "    [Row {row}] Row 1 is empty, skip entire column",
+        "zh": "    [行{row}] 第 1 行即为空位，跳过整列",
+    },
+    "garage.brand_done": {
+        "en": "    [Row {row}] Empty slot, brand area fully scanned, stop",
+        "zh": "    [行{row}] 检测到空位，品牌区域已扫完，停止扫描",
+    },
+    "garage.reset_up": {
+        "en": "  ⬆️ Reset: pressing Up {n} times to row 1...",
+        "zh": "  ⬆️ 复位: 按 {n} 次 Up 回到第 1 行...",
+    },
+    "garage.verify_pass": {
+        "en": "    [Row {row}] ✅ {label} verified! Pressing A to enter details... (col {col}, row {row})",
+        "zh": "    [行{row}] ✅ {label} 校验通过！按 A 进入详情... (列{col}, 行{row})",
+    },
+    "garage.verify_fail": {
+        "en": "    [Row {row}] Verification failed, skip (total skipped: {total})",
+        "zh": "    [行{row}] 校验未通过，跳过 (累计跳过: {total})",
+    },
+    "garage.enter_legendary": {
+        "en": "    [Zone] 🟠 Entering LEGENDARY zone (orange: {px}px)",
+        "zh": "    [区域检测] 🟠 进入 LEGENDARY 区域 (橙色: {px}px)",
+    },
+    "garage.non_legendary": {
+        "en": "    [Zone] Non-LEGENDARY card (consecutive {n}/{max})",
+        "zh": "    [区域检测] 非 LEGENDARY 卡片 (连续 {n}/{max})",
+    },
+    "garage.has_below": {
+        "en": "    [Row {row}] Car below, pressing D-pad Down...",
+        "zh": "    [行{row}] 下方有车，按 D-pad Down...",
+    },
+    "garage.no_below": {
+        "en": "    [Row {row}] Empty below, stop scanning this column",
+        "zh": "    [行{row}] 下方为空位，停止本列向下扫描",
+    },
+    "garage.left_zone": {
+        "en": "  🏁 Left Impreza zone ({n} consecutive non-Impreza), stop scanning!",
+        "zh": "  🏁 已离开 Impreza 区域 (连续 {n} 个非 Impreza)，停止扫描！",
+    },
+    "garage.next_col": {
+        "en": "  ➡️ Pressing Right to column {col}...",
+        "zh": "  ➡️ 按 Right 移到第 {col} 列...",
+    },
+    "garage.max_cols": {
+        "en": "  Scanned {n} columns, no more {label} found",
+        "zh": "  已扫描 {n} 列，未找到更多 {label}",
+    },
+    # --- navigate_to_car_in_garage ---
+    "garage.last_pos": {
+        "en": "  📍 Last position: col {col}, row {row}",
+        "zh": "  📍 上次位置: 列{col}, 行{row}",
+    },
+    "garage.save_pos": {
+        "en": "  📍 Position saved: col {col}, row {row}",
+        "zh": "  📍 记录位置: 列{col}, 行{row}",
+    },
+    "garage.pos_reset": {
+        "en": "  📍 Upgrade position reset to col 1, row 1",
+        "zh": "  📍 加点位置已重置为 列1, 行1",
+    },
+    # --- _scan_and_delete_cars ---
+    "garage.delete_start": {
+        "en": "Starting state-machine delete scan...",
+        "zh": "正在启动带状态机的删车扫描...",
+    },
+    "garage.has_new_skip": {
+        "en": "  ⚠️ Car still has NEW tag (not upgraded), skip...",
+        "zh": "  ⚠️ 该车仍有 NEW 标签（未加点），跳过...",
+    },
+    "garage.high_class_skip": {
+        "en": "  ⚠️ Car is S1/S2 class (main car), skip!",
+        "zh": "  ⚠️ 该车是 S1/S2 级别（主力车），跳过！",
+    },
+    "garage.card_confirmed": {
+        "en": "  ✅ Card OCR confirmed: keywords {n}/3 {matched}",
+        "zh": "  ✅ 卡片 OCR 确认: 关键词 {n}/3 {matched}",
+    },
+    "garage.card_mismatch": {
+        "en": "  ⚠️ Card OCR mismatch Impreza 22B (hit {n}/3 {matched}, OCR: '{text}'), skip!",
+        "zh": "  ⚠️ 卡片 OCR 未匹配 Impreza 22B (命中 {n}/3 {matched}, OCR: '{text}')，跳过！",
+    },
+    "garage.card_error": {
+        "en": "  ⚠️ Card OCR error: {err}, safe skip",
+        "zh": "  ⚠️ 卡片 OCR 异常: {err}，安全跳过",
+    },
+    "garage.delete_col": {
+        "en": "  📋 [Delete] Scanning column {col}...",
+        "zh": "  📋 [删车] 正在扫描第 {col} 列...",
+    },
+    "garage.empty_row1": {
+        "en": "    [Row {row}] Row 1 empty, skip entire column",
+        "zh": "    [行{row}] 第 1 行空位，跳过整列",
+    },
+    "garage.empty_brand": {
+        "en": "    [Row {row}] Empty slot, brand area finished",
+        "zh": "    [行{row}] 空位，品牌区域已扫完",
+    },
+    "garage.removable": {
+        "en": "    [Row {row}] ✅ Removable! Pressing A to enter details...",
+        "zh": "    [行{row}] ✅ 可删除！按 A 进入详情...",
+    },
+    "garage.state_fix": {
+        "en": "  [State fix] Before delete: (row {old_r}, col {old_c}) → cursor moved to: (row {new_r}, col {new_c})",
+        "zh": "  [状态修正] 删除前: (行{old_r}, 列{old_c}) → 光标退到: (行{new_r}, 列{new_c})",
+    },
+    "garage.restore_down": {
+        "en": "  [Restore] Pressing Down to row {row}...",
+        "zh": "  [恢复] 按 Down 前进到行{row}...",
+    },
+    "garage.restore_cross": {
+        "en": "  [Restore] Cross-column rollback: Right → Up×2 to row 1...",
+        "zh": "  [恢复] 跨列回退：按 Right → Up×2 回到第 1 行...",
+    },
+    "garage.delete_skip": {
+        "en": "    [Row {row}] Verification failed, skip",
+        "zh": "    [行{row}] 校验未通过，跳过",
+    },
+    "garage.delete_down": {
+        "en": "    [Row {row}] Car below, pressing Down...",
+        "zh": "    [行{row}] 下方有车，按 Down...",
+    },
+    "garage.delete_no_below": {
+        "en": "    [Row {row}] Empty below",
+        "zh": "    [行{row}] 下方为空位",
+    },
+    "garage.empty_cols_stop": {
+        "en": "  {n} consecutive columns with no target, brand area finished.",
+        "zh": "  连续 {n} 列无目标，品牌区域扫完。",
+    },
+    "garage.brand_leave": {
+        "en": "  🛑 Selected tab: '{text}', left Subaru zone",
+        "zh": "  🛑 选中标签: '{text}'，已离开 Subaru 区域",
+    },
+    "garage.delete_done": {
+        "en": "  Scanned {n} columns, deletion complete.",
+        "zh": "  已扫描 {n} 列，删车完成。",
+    },
+    # --- navigate_to_car_for_removal ---
+    "garage.has_new_keep": {
+        "en": "  ⚠️ Car still has NEW tag (not upgraded), keep, skip...",
+        "zh": "  ⚠️ 该车仍有 NEW 标签（未加点），需保留，跳过...",
+    },
+    "garage.high_class_main": {
+        "en": "  ⚠️ Car is S1/S2 class (user's main car), skip!",
+        "zh": "  ⚠️ 该车是 S1/S2 级别（用户主力车），跳过！",
+    },
+    "garage.removable_b": {
+        "en": "    No NEW tag and B class, can remove!",
+        "zh": "    无 NEW 标签且为 B 级，可以移除！",
+    },
+    "garage.remove_label": {
+        "en": "Removable car",
+        "zh": "移除车",
+    },
+    # --- action_remove_single_car ---
+    "garage.removing": {
+        "en": "🗑️ Removing car #{n}...",
+        "zh": "🗑️ 正在移除第 {n} 辆车...",
+    },
+    "garage.remove_a": {
+        "en": "  -> A Remove Car From Garage...",
+        "zh": "  -> A Remove Car From Garage...",
+    },
+    "garage.remove_confirm_switch": {
+        "en": "  -> D-pad Down: switch to confirm button...",
+        "zh": "  -> D-pad Down：切换到确认按钮...",
+    },
+    "garage.remove_confirm": {
+        "en": "  -> A: Confirm removal!",
+        "zh": "  -> A：确认移除！",
+    },
+    "garage.removed_ok": {
+        "en": "  ✅ Car #{n} successfully removed from garage!",
+        "zh": "  ✅ 第 {n} 辆车已成功从车库移除！",
+    },
+    # --- navigate_to_main_car ---
+    "garage.main_start": {
+        "en": "Starting garage grid navigation: main car search...",
+        "zh": "正在启动车库网格导航: 主力车搜索...",
+    },
+    "garage.main_mode": {
+        "en": "  Scan mode: per-cell PI color detection (no template matching)",
+        "zh": "  扫描模式: 逐格 PI 颜色检测（不依赖模板匹配）",
+    },
+    "garage.main_not_target": {
+        "en": "    [Row {row}] ⚠️ S2 but not target (hit {n}/3 {matched}, OCR: '{text}'), skip",
+        "zh": "    [行{row}] ⚠️ S2 但非目标车 (命中 {n}/3 {matched}, OCR: '{text}')，跳过",
+    },
+    "garage.main_found": {
+        "en": "    [Row {row}] ✅ Found main car (S2 + Impreza 22B)! Pressing A... (col {col}, row {row})",
+        "zh": "    [行{row}] ✅ 找到主力车（S2 + Impreza 22B）！按 A 进入详情... (列{col}, 行{row})",
+    },
+    "garage.main_skip_s": {
+        "en": "    [Row {row}] S class but not target car, skip...",
+        "zh": "    [行{row}] S 级但非目标车，跳过...",
+    },
+    "garage.main_skip_b": {
+        "en": "    [Row {row}] B class car, skip...",
+        "zh": "    [行{row}] B 级车，跳过...",
+    },
+    "garage.main_not_found": {
+        "en": "  ⚠️ S1/S2 main car not found!",
+        "zh": "  ⚠️ 未找到 S1/S2 主力车！",
+    },
+    # --- action_get_in_car ---
+    "garage.get_in": {
+        "en": "  Get In Car...",
+        "zh": "  Get In Car...",
+    },
+    "garage.got_in": {
+        "en": "  ✅ In the car!",
+        "zh": "  ✅ 已上车！",
     },
 }

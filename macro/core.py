@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from colorama import Fore, Style
 
+from engine.i18n import t
 from engine.utils import (
     find_game_window,  # noqa: F401 — re-exported via macro/__init__.py
     force_foreground,
@@ -57,14 +58,14 @@ _FOREGROUND_CHECK_INTERVAL = 10.0  # max check foreground window once per 10 sec
 
 def log_state_header(state, description):
     safe_print(f"\n{Fore.MAGENTA}{Style.BRIGHT}==================================================")
-    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}   🔥 当前状态: {state}")
-    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}   👉 任务描述: {description}")
+    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}{t('core.current_state', state=state)}")
+    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}{t('core.task_desc', desc=description)}")
     safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}=================================================={Style.RESET_ALL}")
 
 
 def log_step_header(step_num, title):
     safe_print(f"\n{Fore.BLUE}{Style.BRIGHT}==================================================")
-    safe_print(f"\n{Fore.BLUE}{Style.BRIGHT}    [导航第 {step_num} 步] {title}")
+    safe_print(f"\n{Fore.BLUE}{Style.BRIGHT}{t('core.nav_step', num=step_num, title=title)}")
     safe_print(f"{Fore.BLUE}{Style.BRIGHT}=================================================={Style.RESET_ALL}")
 
 
@@ -82,7 +83,7 @@ def capture_screenshot(hwnd):
         try:
             # 检查窗口是否被最小化（IsIconic），如果是则恢复它
             if ctypes.windll.user32.IsIconic(hwnd):
-                log_warning("游戏窗口已最小化，正在恢复...")
+                log_warning(t("core.window_minimized"))
                 ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
                 time.sleep(2.0)  # 等待窗口恢复
 
@@ -99,13 +100,14 @@ def capture_screenshot(hwnd):
 
             # 防御：窗口坐标异常（最小化时可能返回 0x0 或负坐标）
             if cw <= 0 or ch <= 0 or cx < -10000:
-                log_error(
-                    f"截图捕获失败: Region has zero or negative size: {{'top': {cy}, 'left': {cx}, 'width': {cw}, 'height': {ch}}}"
+                err_detail = (
+                    f"Region has zero or negative size: {{'top': {cy}, 'left': {cx}, 'width': {cw}, 'height': {ch}}}"
                 )
+                log_error(t("core.capture_fail", err=err_detail))
                 return None, cx, cy, cw, ch
 
         except Exception as e:
-            log_warning(f"获取窗口坐标失败: {e}. 默认使用全屏。")
+            log_warning(t("core.coord_fail", err=e))
 
     try:
         sct = _get_mss()
@@ -117,7 +119,7 @@ def capture_screenshot(hwnd):
         return resized, cx, cy, cw, ch
 
     except Exception as e:
-        log_error(f"截图捕获失败: {e}")
+        log_error(t("core.capture_fail", err=e))
         # GDI 句柄可能已损坏，重置 MSS 单例
         try:
             from engine.utils import reset_mss

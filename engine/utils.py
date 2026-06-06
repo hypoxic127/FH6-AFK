@@ -58,7 +58,9 @@ def reset_mss() -> None:
         except Exception:
             pass  # close 失败也无所谓，置空即可
         _mss_instance = None
-        log_info("MSS 截图实例已重置")
+        from engine.i18n import t
+
+        log_info(t("core.mss_reset"))
 
 
 # 初始化 colorama（autoreset=True 使得每条 print 后自动重置颜色）

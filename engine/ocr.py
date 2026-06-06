@@ -26,6 +26,7 @@ import numpy as np
 import pytesseract
 from colorama import Fore, Style
 
+from engine.i18n import t
 from engine.utils import log_error, log_success, log_warning, safe_print
 
 # ==========================================
@@ -130,7 +131,7 @@ def setup_tesseract() -> bool:
     """
     try:
         pytesseract.get_tesseract_version()
-        log_success("Tesseract is available in system PATH.")
+        log_success(t("ocr.tesseract_ok"))
         return True
     except pytesseract.TesseractNotFoundError:
         pass
@@ -238,14 +239,14 @@ def read_skill_points(img: np.ndarray) -> int | None:
             text = pytesseract.image_to_string(upscaled, config=config).strip()
             if text.isdigit():
                 val = int(text)
-                safe_print(f"{Fore.CYAN}[OCR PSM{psm}]{Style.RESET_ALL} 识别结果: {val}")
+                safe_print(f"{Fore.CYAN}{t('ocr.psm_result', psm=psm, val=val)}{Style.RESET_ALL}")
                 if best_val is None or len(text) > len(str(best_val)):
                     best_val = val
         except Exception:
             pass
 
     if best_val is not None and best_val > 0:
-        safe_print(f"{Fore.GREEN}[OCR 最终]{Style.RESET_ALL} 采用值: {best_val}")
+        safe_print(f"{Fore.GREEN}{t('ocr.final_result', val=best_val)}{Style.RESET_ALL}")
         return best_val
 
     # ===== 零技能点保底机制 =====
@@ -255,7 +256,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     try:
         raw_text = pytesseract.image_to_string(upscaled).strip().lower()
         if not raw_text or "no" in raw_text or "avail" in raw_text or "point" in raw_text:
-            log_success(f"[零技能点检测] 成功匹配到零技能点界面特征 (识别文本: '{raw_text}')，判定当前技能点为 0。")
+            log_success(t("ocr.zero_detect", text=raw_text))
             return 0
     except Exception:
         pass

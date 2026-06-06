@@ -64,23 +64,40 @@ def get_matches_needed(current_points: int) -> int:
     return 0 if matches_needed < 0 else matches_needed
 
 
-def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
-    """将比赛完成记录归档到 play_archive.txt，包含时间戳和剩余场次。"""
-    archive_path = "play_archive.txt"
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def _get_archive_path() -> str:
+    """返回比赛归档文件路径 (data/play_archive.jsonl)。"""
+    from engine.runtime import get_data_dir
 
-    log_entry = (
-        f"============================================================\n"
-        f"Timestamp: {timestamp}\n"
-        f"Match Completed: #{match_num}\n"
-        f"Remaining Matches Needed: {remaining_matches}\n"
-        f"Status: SUCCESS (Archived & Settled)\n"
-        f"============================================================\n\n"
-    )
+    return os.path.join(get_data_dir(), "play_archive.jsonl")
+
+
+def _get_race_state_path() -> str:
+    """返回比赛状态文件路径 (data/race_state.json)。"""
+    from engine.runtime import get_data_dir
+
+    return os.path.join(get_data_dir(), "race_state.json")
+
+
+# 保留常量以兼容测试 — 指向新路径
+RACE_STATE_FILE = _get_race_state_path()
+
+
+def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
+    """将比赛完成记录以 JSONL 格式追加到 data/play_archive.jsonl。
+
+    每行一条 JSON 记录，便于程序回读分析。
+    """
+    archive_path = _get_archive_path()
+    record = {
+        "ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "match": match_num,
+        "remaining": remaining_matches,
+        "status": "success",
+    }
 
     try:
         with open(archive_path, "a", encoding="utf-8") as f:
-            f.write(log_entry)
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
         log_success(t("farm.archived", path=archive_path))
     except IOError as e:
         log_error(t("farm.archive_fail", err=e))
@@ -90,18 +107,17 @@ def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
 # 比赛状态持久化（断点续跑）
 # ==========================================
 
-RACE_STATE_FILE = "race_state.json"
-
 
 def save_race_state(matches_needed: int, matches_completed: int) -> None:
-    """保存比赛进度到 JSON 文件，支持断点续跑。"""
+    """保存比赛进度到 data/race_state.json，支持断点续跑。"""
+    state_path = _get_race_state_path()
     state = {
         "matches_needed": matches_needed,
         "matches_completed": matches_completed,
         "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
     try:
-        with open(RACE_STATE_FILE, "w", encoding="utf-8") as f:
+        with open(state_path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
         log_info(t("farm.state_saved", remain=matches_needed, done=matches_completed))
     except IOError as e:
@@ -110,10 +126,11 @@ def save_race_state(matches_needed: int, matches_completed: int) -> None:
 
 def load_race_state() -> tuple[int, int, str] | None:
     """加载已保存的比赛进度，用于断点续跑。"""
-    if not os.path.exists(RACE_STATE_FILE):
+    state_path = _get_race_state_path()
+    if not os.path.exists(state_path):
         return None
     try:
-        with open(RACE_STATE_FILE, "r", encoding="utf-8") as f:
+        with open(state_path, "r", encoding="utf-8") as f:
             state = json.load(f)
         matches_needed = state.get("matches_needed", 0)
         matches_completed = state.get("matches_completed", 0)
@@ -128,10 +145,11 @@ def load_race_state() -> tuple[int, int, str] | None:
 
 def clear_race_state() -> None:
     """所有比赛完成后清除状态文件。"""
+    state_path = _get_race_state_path()
     try:
-        if os.path.exists(RACE_STATE_FILE):
-            os.remove(RACE_STATE_FILE)
-            log_success(t("farm.state_cleared", path=RACE_STATE_FILE))
+        if os.path.exists(state_path):
+            os.remove(state_path)
+            log_success(t("farm.state_cleared", path=state_path))
     except OSError as e:
         log_error(t("farm.state_clear_fail", err=e))
 

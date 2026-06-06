@@ -72,6 +72,12 @@ collect_ignore_glob = ["tests/test_from_state.py", "tests/test_visualize.py"]
 
 @pytest.fixture
 def tmp_race_state(tmp_path: os.PathLike, monkeypatch: pytest.MonkeyPatch):
-    """提供临时工作目录，防止测试污染项目根目录的 race_state.json。"""
-    monkeypatch.chdir(tmp_path)
+    """提供临时数据目录，防止测试污染项目 data/ 目录。"""
+    data_dir = str(tmp_path)
+    # 让 _get_race_state_path / _get_archive_path 使用临时目录
+    monkeypatch.setattr("engine.runtime.get_data_dir", lambda: data_dir)
+    # 刷新 RACE_STATE_FILE 常量（模块级变量在 import 时已求值）
+    import farm.skills as _skills
+
+    monkeypatch.setattr(_skills, "RACE_STATE_FILE", os.path.join(data_dir, "race_state.json"))
     return tmp_path

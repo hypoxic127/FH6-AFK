@@ -13,7 +13,7 @@ import os
 import pytest
 
 from farm.skills import (
-    RACE_STATE_FILE,
+    _get_race_state_path,
     clear_race_state,
     get_matches_needed,
     load_race_state,
@@ -69,7 +69,7 @@ class TestRaceStatePersistence:
     def test_save_creates_file(self, tmp_race_state) -> None:
         """save_race_state 应创建 JSON 文件。"""
         save_race_state(50, 10)
-        assert os.path.exists(RACE_STATE_FILE)
+        assert os.path.exists(_get_race_state_path())
 
     def test_save_load_roundtrip(self, tmp_race_state) -> None:
         """保存后加载应返回相同的数据。"""
@@ -93,9 +93,9 @@ class TestRaceStatePersistence:
     def test_clear_removes_file(self, tmp_race_state) -> None:
         """clear 应删除文件。"""
         save_race_state(10, 5)
-        assert os.path.exists(RACE_STATE_FILE)
+        assert os.path.exists(_get_race_state_path())
         clear_race_state()
-        assert not os.path.exists(RACE_STATE_FILE)
+        assert not os.path.exists(_get_race_state_path())
 
     def test_clear_noop_when_no_file(self, tmp_race_state) -> None:
         """无文件时 clear 不应报错。"""
@@ -103,14 +103,14 @@ class TestRaceStatePersistence:
 
     def test_load_handles_corrupt_json(self, tmp_race_state) -> None:
         """损坏的 JSON 不应导致崩溃。"""
-        with open(RACE_STATE_FILE, "w") as f:
+        with open(_get_race_state_path(), "w") as f:
             f.write("{invalid json!!!")
         assert load_race_state() is None
 
     def test_save_json_structure(self, tmp_race_state) -> None:
         """验证 JSON 文件内部结构符合预期。"""
         save_race_state(30, 20)
-        with open(RACE_STATE_FILE, "r", encoding="utf-8") as f:
+        with open(_get_race_state_path(), "r", encoding="utf-8") as f:
             data = json.load(f)
         assert "matches_needed" in data
         assert "matches_completed" in data

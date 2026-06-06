@@ -44,6 +44,20 @@ def get_user_dir() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def get_data_dir() -> str:
+    """获取运行时数据目录 (data/)，自动创建。
+
+    所有运行时文件（race_state.json、play_archive.jsonl 等）
+    统一存放在此目录下，保持项目根目录整洁。
+
+    Returns:
+        data/ 目录的绝对路径
+    """
+    data_dir = os.path.join(get_user_dir(), "data")
+    os.makedirs(data_dir, exist_ok=True)
+    return data_dir
+
+
 def is_frozen() -> bool:
     """判断是否在 PyInstaller 打包环境中运行。
 

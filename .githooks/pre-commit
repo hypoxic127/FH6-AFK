@@ -1,0 +1,24 @@
+#!/bin/sh
+# ============================================================
+# Git pre-commit hook — auto-format with Ruff
+# ============================================================
+# Runs `ruff format` on all staged .py files before each commit.
+# If formatting changes any file, it re-stages the fixed version
+# so the commit always contains properly formatted code.
+# ============================================================
+
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$')
+
+if [ -z "$STAGED_PY" ]; then
+    exit 0
+fi
+
+echo "[pre-commit] Running ruff format on staged .py files..."
+
+# Format only the staged Python files
+echo "$STAGED_PY" | xargs python -m ruff format
+
+# Re-stage any files that were reformatted
+echo "$STAGED_PY" | xargs git add
+
+echo "[pre-commit] ✅ Format complete."

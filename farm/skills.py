@@ -35,6 +35,7 @@ import vgamepad as vg
 from colorama import Fore, Style
 
 import engine.ocr as module_ocr
+from engine.i18n import t
 from engine.state_detect import get_detector
 from engine.utils import (
     find_game_window,
@@ -46,6 +47,7 @@ from engine.utils import (
     log_success,
     log_warning,
     press_button,
+    safe_print,
 )
 
 # ==========================================
@@ -78,9 +80,9 @@ def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
     try:
         with open(archive_path, "a", encoding="utf-8") as f:
             f.write(log_entry)
-        log_success(f"Archived play count to {archive_path}")
+        log_success(t("farm.archived", path=archive_path))
     except IOError as e:
-        log_error(f"Failed to archive play count to file: {e}")
+        log_error(t("farm.archive_fail", err=e))
 
 
 # ==========================================
@@ -100,7 +102,7 @@ def save_race_state(matches_needed: int, matches_completed: int) -> None:
     try:
         with open(RACE_STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
-        log_info(f"Race state saved: {matches_needed} races remaining, {matches_completed} completed")
+        log_info(t("farm.state_saved", remain=matches_needed, done=matches_completed))
     except IOError as e:
         log_error(f"Failed to save race state: {e}")
 
@@ -128,9 +130,9 @@ def clear_race_state() -> None:
     try:
         if os.path.exists(RACE_STATE_FILE):
             os.remove(RACE_STATE_FILE)
-            log_success(f"Race state file cleared ({RACE_STATE_FILE})")
+            log_success(t("farm.state_cleared", path=RACE_STATE_FILE))
     except OSError as e:
-        log_error(f"Failed to clear race state file: {e}")
+        log_error(t("farm.state_clear_fail", err=e))
 
 
 # ==========================================
@@ -200,12 +202,12 @@ class FarmStateMachine:
         if saved_state is not None:
             _, self.matches_completed, last_updated = saved_state
             # 不设置 points_scanned = True，确保启动后先去 CARS 扫描最新技能点
-            print(f"\n{Fore.CYAN}{Style.BRIGHT}==========================================")
-            print("   [RESUMING FROM SAVED STATE]")
-            print(f"   Matches Already Completed: {self.matches_completed}")
-            print(f"   Last Updated: {last_updated}")
-            print("   (Will scan CARS tab for fresh skill points)")
-            print("==========================================\n")
+            safe_print(f"\n{Fore.CYAN}{Style.BRIGHT}==========================================")
+            safe_print(t("farm.resume_title"))
+            safe_print(t("farm.resume_completed", count=self.matches_completed))
+            safe_print(t("farm.resume_updated", time=last_updated))
+            safe_print(t("farm.resume_scan"))
+            safe_print("==========================================\n")
 
     def _update_client_rect(self) -> None:
         """每 2 秒刷新一次窗口客户区坐标（避免每帧调用）。"""
@@ -215,7 +217,7 @@ class FarmStateMachine:
                 try:
                     self.cx, self.cy, self.cw, self.ch = get_client_rect(self.hwnd)
                 except OSError as e:
-                    log_warning(f"Failed to get client rect: {e}. Falling back to primary screen.")
+                    log_warning(t("farm.client_rect_fail", err=e))
             self.rect_update_timer = now
 
     def _capture_frame(self) -> tuple[np.ndarray | None, np.ndarray | None]:
@@ -232,7 +234,7 @@ class FarmStateMachine:
             resized = cv2.resize(img, (1600, 900), interpolation=cv2.INTER_AREA)
             return resized, img
         except Exception as e:
-            log_error(f"Failed to capture screen: {e}")
+            log_error(t("farm.capture_fail", err=e))
             return None, None
 
     # ===================================================================
@@ -252,7 +254,7 @@ class FarmStateMachine:
                 _, thresh_banner = cv2.threshold(gray_banner, 100, 255, cv2.THRESH_BINARY_INV)
                 banner_text = pytesseract.image_to_string(thresh_banner).strip().lower()
                 if "rate" in banner_text or "event" in banner_text:
-                    log_success(f"[Rate Event] Detected popup (yellow pixels: {yg_pixels}). Pressing A to dismiss...")
+                    log_success(t("farm.rate_popup", count=yg_pixels))
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.0)
                     return True
         except Exception:
@@ -269,7 +271,7 @@ class FarmStateMachine:
         self.gamepad.update()
 
         if time.time() - self.racing_print_timer > 2.0:
-            log_info("[RACING] Holding Right Trigger (RT) to accelerate... Scanning for race end...")
+            log_info(t("farm.racing_rt"))
             self.racing_print_timer = time.time()
 
         racing_state = self.detector.detect(resized, mode="racing")
@@ -288,18 +290,18 @@ class FarmStateMachine:
         remaining_matches = max(0, self.matches_needed - 1)
         archive_match_to_file(self.matches_completed, remaining_matches)
 
-        print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-        print("   [MATCH PLAYED & SETTLED SUCCESSFULLY]  ")
-        print(f"   Match Number Completed: {self.matches_completed}")
-        print(f"   Original Matches Needed: {self.matches_needed}")
-        print(f"   Remaining Matches Needed: {remaining_matches}")
-        print("==========================================\n")
+        safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+        safe_print(t("farm.match_done_title"))
+        safe_print(t("farm.match_done_num", count=self.matches_completed))
+        safe_print(t("farm.match_done_orig", count=self.matches_needed))
+        safe_print(t("farm.match_done_remain", count=remaining_matches))
+        safe_print("==========================================\n")
 
         self.matches_needed = remaining_matches
         save_race_state(self.matches_needed, self.matches_completed)
 
         if remaining_matches > 0:
-            log_success(f"Race finished! {remaining_matches} races remaining, pressing X to restart race...")
+            log_success(t("farm.restart_race", remain=remaining_matches))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_X, delay=0)
             time.sleep(1.0)
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
@@ -307,39 +309,39 @@ class FarmStateMachine:
             self.entering_race = True  # 防止过渡画面误识别为菜单标签（如 STORE）触发 RB
             time.sleep(3.0)
         else:
-            log_success(f"Race finished! All {self.matches_completed} races completed! Pressing A to view rewards...")
+            log_success(t("farm.all_done", count=self.matches_completed))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
             self.is_racing = False
             self.waiting_for_next = True
-            log_info("Waiting for rewards screen to transition to Next screen...")
+            log_info(t("farm.wait_next"))
 
     def _handle_waiting_next(self, resized: np.ndarray) -> None:
         """等待 Next 结算画面，按 B 退出。"""
         next_state = self.detector.detect(resized, mode="racing")
         if next_state == "NEXT_SCREEN":
-            log_success("Rewards settled! Detected Next screen. Pressing B to exit...")
+            log_success(t("farm.next_found"))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=0)
             self.waiting_for_next = False
             self.waiting_for_gameplay = True
-            log_info("Waiting for game window to return to gameplay...")
+            log_info(t("farm.wait_gameplay"))
         time.sleep(0.2)
 
     def _handle_waiting_gameplay(self, resized: np.ndarray) -> None:
         """等待回到自由漫游，按 START 打开暂停菜单。"""
         play_state = self.detector.detect(resized, mode="racing")
         if play_state == "PLAYING":
-            log_success("Returned to gameplay! Pressing START to open pause menu...")
+            log_success(t("farm.gameplay_found"))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=0)
             self.waiting_for_gameplay = False
             time.sleep(2.5)
 
             if self.matches_needed <= 0:
                 clear_race_state()
-                print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-                print(f"{Fore.GREEN}{Style.BRIGHT}   [ALL TARGET MATCHES SUCCESSFULLY COMPLETED] ")
-                print(f"{Fore.GREEN}{Style.BRIGHT}   Skill point goal has been successfully reached! ")
-                print("   Returned to Menu successfully. ")
-                print(f"{Fore.GREEN}{Style.BRIGHT}==========================================\n")
+                safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.goal_reached_title')}")
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.goal_reached_desc')}")
+                safe_print(t("farm.goal_reached_menu"))
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}==========================================\n")
                 self.should_exit = True
         time.sleep(0.2)
 
@@ -352,7 +354,7 @@ class FarmStateMachine:
         if not self.points_scanned and not self.is_racing and not self.waiting_for_gameplay:
             startup_state = self.detector.detect(resized, mode="racing")
             if startup_state == "PLAYING":
-                log_success("[STARTUP SAFEGUARD] Detected gameplay screen. Pressing START to open pause menu...")
+                log_success(t("farm.startup_guard"))
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=2.5)
                 return True
         return False
@@ -362,32 +364,32 @@ class FarmStateMachine:
         if self.points_scanned and not self.is_racing and not self.waiting_for_next and not self.waiting_for_gameplay:
             outside_state = self.detector.detect(resized, mode="racing")
             if outside_state == "RACE_END":
-                log_success("Detected race end outside racing mode. Handling as race end...")
+                log_success(t("farm.outside_race_end"))
                 self.matches_completed += 1
                 remaining_matches = max(0, self.matches_needed - 1)
                 archive_match_to_file(self.matches_completed, remaining_matches)
 
-                print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-                print("   [MATCH PLAYED & SETTLED SUCCESSFULLY]  ")
-                print(f"   Match Number Completed: {self.matches_completed}")
-                print(f"   Original Matches Needed: {self.matches_needed}")
-                print(f"   Remaining Matches Needed: {remaining_matches}")
-                print("==========================================\n")
+                safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+                safe_print(t("farm.match_done_title"))
+                safe_print(t("farm.match_done_num", count=self.matches_completed))
+                safe_print(t("farm.match_done_orig", count=self.matches_needed))
+                safe_print(t("farm.match_done_remain", count=remaining_matches))
+                safe_print("==========================================\n")
 
                 self.matches_needed = remaining_matches
                 save_race_state(self.matches_needed, self.matches_completed)
 
                 if remaining_matches > 0:
-                    log_success(f"{remaining_matches} races remaining, pressing X to restart race...")
+                    log_success(t("farm.restart_race", remain=remaining_matches))
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_X, delay=1.0)
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
                     self.entering_race = True  # 防止过渡画面误识别为菜单标签
                     time.sleep(3.0)
                 else:
-                    log_success(f"All {self.matches_completed} races completed! Pressing A to view rewards...")
+                    log_success(t("farm.all_done", count=self.matches_completed))
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
                     self.waiting_for_next = True
-                    log_info("Waiting for Next screen...")
+                    log_info(t("farm.wait_next"))
                 return True
         return False
 
@@ -405,15 +407,13 @@ class FarmStateMachine:
         if state != "UNKNOWN":
             self.unknown_consecutive_count = 0
             if self.waiting_for_gameplay:
-                log_success("Successfully re-entered the game menu!")
+                log_success(t("farm.reenter_menu"))
                 self.waiting_for_gameplay = False
 
         # 安全守卫：初始 OCR 扫描前不允许进入子菜单
         if not self.points_scanned:
             if state in ["EVENTLAB_MENU", "EVENTS_SUBMENU", "FAVORITES_LIST", "RACE_READY", "CAR_SELECT", "PRE_RACE"]:
-                log_warning(
-                    f"[SAFETY GUARD] Active state: {state}, but skill points NOT scanned yet! Pressing B to back out..."
-                )
+                log_warning(t("farm.safety_guard", state=state))
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.5)
                 return
 
@@ -440,117 +440,99 @@ class FarmStateMachine:
 
     def _on_cars_tab(self, img: np.ndarray) -> None:
         """CARS 标签页：OCR 读取技能点并决定后续操作。"""
-        print(f"{Fore.GREEN}{Style.BRIGHT}[STATE: CARS]{Style.RESET_ALL} Arrived at CARS tab! Scanning skill points...")
+        safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.cars_scan')}{Style.RESET_ALL}")
         detected_points = module_ocr.read_skill_points(img)
         if detected_points is not None:
             self.matches_needed = get_matches_needed(detected_points)
-            print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-            print("   [SKILL POINTS SCAN SUCCESS on CARS TAB] ")
-            print(f"   Current Points: {detected_points} / 999")
-            print(f"   Matches Needed: {self.matches_needed} (10 pts/match)")
-            print("==========================================\n")
+            safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+            safe_print(t("farm.scan_ok_title"))
+            safe_print(t("farm.scan_ok_points", pts=detected_points))
+            safe_print(t("farm.scan_ok_needed", count=self.matches_needed))
+            safe_print("==========================================\n")
             self.last_points = detected_points
             self.points_scanned = True
             save_race_state(self.matches_needed, self.matches_completed)
 
             if self.matches_needed <= 0:
-                print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-                print("   [GOAL ALREADY REACHED] ")
-                print(f"   Current points {detected_points} >= 999. No matches needed!")
-                print("==========================================\n")
+                safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+                safe_print(t("farm.already_full_title"))
+                safe_print(t("farm.already_full_desc", pts=detected_points))
+                safe_print("==========================================\n")
                 self.should_exit = True
                 return
 
-            print(f"{Fore.YELLOW}[STATE: CARS]{Style.RESET_ALL} Shifting right (RB)...")
+            safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
         else:
             if not self.points_scanned:
-                log_warning(
-                    "OCR failed to read skill points on CARS tab. Enforcing initial scan, retrying on next frame..."
-                )
+                log_warning(t("farm.ocr_fail_retry"))
                 time.sleep(0.5)
             else:
-                log_warning(f"OCR failed. Using current matches_needed: {self.matches_needed}")
-                print(f"{Fore.YELLOW}[STATE: CARS]{Style.RESET_ALL} Shifting right (RB)...")
+                log_warning(t("farm.ocr_fail_use", count=self.matches_needed))
+                safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
 
     def _on_other_tab(self, state: str) -> None:
         """非目标标签页：按 RB 翻页。"""
-        print(f"{Fore.YELLOW}[STATE: {state}]{Style.RESET_ALL} Not in Creative Hub, shifting right (RB)...")
+        safe_print(f"{Fore.YELLOW}{t('farm.other_tab', state=state)}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
 
     def _on_creative_hub(self) -> None:
         """Creative Hub 标签页：进入 EventLab。"""
         if not self.points_scanned:
-            print(
-                f"{Fore.YELLOW}[STATE: CREATIVE HUB]{Style.RESET_ALL} "
-                f"Initial points not scanned yet! "
-                f"Bypassing, shifting right (RB)..."
-            )
+            safe_print(f"{Fore.YELLOW}{t('farm.hub_bypass')}{Style.RESET_ALL}")
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
         else:
-            print(
-                f"{Fore.GREEN}{Style.BRIGHT}"
-                f"[STATE: CREATIVE_HUB]{Style.RESET_ALL} "
-                f"Arrived at Creative Hub! Entering EventLab (A)..."
-            )
+            safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.hub_enter')}{Style.RESET_ALL}")
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
 
     def _on_eventlab_menu(self) -> None:
         """EventLab 菜单：选择 Play Event。"""
-        print(
-            f"{Fore.GREEN}{Style.BRIGHT}"
-            f"[STATE: EVENTLAB_MENU]{Style.RESET_ALL} "
-            f"Entering EventLab menu, selecting Play Event (A)..."
-        )
+        safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.eventlab_menu')}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
 
     def _on_events_submenu(self) -> None:
         """Events 子菜单：按 RB 找 My Favorites。"""
-        print(f"{Fore.YELLOW}[STATE: EVENTS_SUBMENU]{Style.RESET_ALL} Shifting right (RB) to find My Favorites...")
+        safe_print(f"{Fore.YELLOW}{t('farm.events_sub')}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
 
     def _on_favorites_list(self) -> None:
         """My Favorites 列表：选中蓝图并进入。"""
         self.entering_race = True
-        print(
-            f"{Fore.GREEN}{Style.BRIGHT}"
-            f"[STATE: FAVORITES_LIST]{Style.RESET_ALL} "
-            f"Arrived at My Favorites! Selecting Event (A)..."
-        )
+        safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.favorites')}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=3.0)
 
     def _on_race_ready(self) -> None:
         """比赛类型选择：确保 Solo 选中并启动。"""
-        print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-        print("   [STATE: RACE_READY] Arrived at Choose Race Type!")
-        print("   Ensuring SOLO is selected and launching...")
-        print("==========================================\n")
+        safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+        safe_print(t("farm.race_ready_title"))
+        safe_print(t("farm.race_ready_solo"))
+        safe_print("==========================================\n")
 
         for button in [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT]:
             for _ in range(2):
                 press_button(self.gamepad, button, delay=0.3)
 
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
-        print(f"{Fore.GREEN}[INFO]{Style.RESET_ALL} SOLO selected! Transitioning to Car Selection...")
+        safe_print(f"{Fore.GREEN}{t('farm.solo_ok')}{Style.RESET_ALL}")
         time.sleep(1.5)
 
     def _on_car_select(self) -> None:
         """车辆选择：直接确认当前车辆。"""
-        print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-        print("   [STATE: CAR_SELECT] Confirming current car (A)...")
-        print("==========================================\n")
+        safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+        safe_print(t("farm.car_select"))
+        safe_print("==========================================\n")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=3.0)
 
     def _on_pre_race(self) -> None:
         """赛事准备界面：按 A 开始比赛，切换到 racing 模式。"""
-        print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-        print("   [STATE: PRE_RACE] Arrived at Pre-Race Lobby!")
-        print("   Launching Start Race Event...")
-        print("==========================================\n")
+        safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+        safe_print(t("farm.pre_race_title"))
+        safe_print(t("farm.pre_race_launch"))
+        safe_print("==========================================\n")
 
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
-        log_success("Start Race Event selected! Transitioning to racing mode...")
+        log_success(t("farm.race_start"))
         self.is_racing = True
         self.entering_race = False
         self.racing_print_timer = time.time()
@@ -559,10 +541,8 @@ class FarmStateMachine:
     def _on_unknown(self, state: str) -> None:
         """UNKNOWN 状态：等待 UI 加载 + 自动恢复。"""
         self.unknown_consecutive_count += 1
-        print(
-            f"{Fore.BLUE}[STATE: {state}]{Style.RESET_ALL} "
-            f"Waiting for UI to load... "
-            f"[Consecutive: {self.unknown_consecutive_count}/5]"
+        safe_print(
+            f"{Fore.BLUE}{t('farm.unknown_wait', state=state, count=self.unknown_consecutive_count)}{Style.RESET_ALL}"
         )
 
         if self.unknown_consecutive_count % 5 == 1:
@@ -578,15 +558,13 @@ class FarmStateMachine:
         # 自动恢复
         if self.unknown_consecutive_count >= 15 and not self.waiting_for_gameplay:
             if self.unknown_consecutive_count % 15 == 0:
-                log_warning(
-                    f"  [AUTO-RECOVERY] 连续 {self.unknown_consecutive_count} 次 UNKNOWN，尝试按 B 退出卡住画面..."
-                )
+                log_warning(t("farm.recovery_b", count=self.unknown_consecutive_count))
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
             if self.unknown_consecutive_count % 30 == 0:
-                log_warning("  [AUTO-RECOVERY] 尝试按 Start 打开菜单...")
+                log_warning(t("farm.recovery_start"))
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=1.0)
             if self.unknown_consecutive_count % 60 == 0:
-                log_warning("  [AUTO-RECOVERY] 尝试重新获取窗口焦点...")
+                log_warning(t("farm.recovery_focus"))
                 recovery_hwnd = find_game_window()
                 if recovery_hwnd:
                     force_foreground(recovery_hwnd)
@@ -595,8 +573,8 @@ class FarmStateMachine:
         # 诊断警告
         if self.unknown_consecutive_count >= 5 and not self.waiting_for_gameplay:
             log_warning("=" * 66)
-            log_warning("  [DIAGNOSTIC WARNING: GAME SCREEN IS OBSCURED OR LOST FOCUS]")
-            log_warning("  Please verify: game is windowed/borderless, not minimized, not covered.")
+            log_warning(t("farm.diag_title"))
+            log_warning(t("farm.diag_hint"))
             log_warning("=" * 66)
 
         time.sleep(0.5)
@@ -661,56 +639,56 @@ def main(gamepad: vg.VX360Gamepad | None = None) -> None:
     初始化 Tesseract / GamePad / Window 等依赖，然后委托给
     FarmStateMachine 驱动状态循环。
     """
-    print(f"\n{Fore.MAGENTA}{Style.BRIGHT}==================================================")
-    print(f"{Fore.MAGENTA}{Style.BRIGHT}   FORZA HORIZON 6 AUTOMATED RACE ENTRY - STATE MACHINE")
-    print(f"{Fore.MAGENTA}{Style.BRIGHT}=================================================={Style.RESET_ALL}\n")
+    safe_print(f"\n{Fore.MAGENTA}{Style.BRIGHT}==================================================")
+    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}{t('farm.title')}")
+    safe_print(f"{Fore.MAGENTA}{Style.BRIGHT}=================================================={Style.RESET_ALL}\n")
 
     # 1. Initialize Tesseract
     module_ocr.setup_tesseract()
 
-    print(f"\n{Fore.YELLOW}==================================================")
-    print("   OCR-ONLY SKILL POINTS SCANNER")
-    print("   (Must visit CARS menu tab to scan points initially)")
-    print(f"=================================================={Style.RESET_ALL}")
+    safe_print(f"\n{Fore.YELLOW}==================================================")
+    safe_print(t("farm.ocr_title"))
+    safe_print(t("farm.ocr_subtitle"))
+    safe_print(f"=================================================={Style.RESET_ALL}")
 
     # 2. Initialize State Detector (单例)
     detector = get_detector()
-    log_info("StateDetector initialized (Color Histogram + OCR hybrid)")
+    log_info(t("farm.detector_init"))
 
     # 3. Game Window Check & Activation
     hwnd = find_game_window()
     if hwnd:
-        log_success("Forza Horizon 6 game window detected.")
+        log_success(t("farm.window_found"))
         force_foreground(hwnd)
     else:
-        log_warning("Forza Horizon 6 window not found! Running in fallback mode.")
+        log_warning(t("farm.window_missing"))
 
     # 4. Gamepad Initialization
     owns_gamepad = False
     if gamepad is None:
-        log_info("Initializing virtual Xbox 360 controller...")
+        log_info(t("farm.init_controller"))
         try:
             gamepad = vg.VX360Gamepad()
             owns_gamepad = True
-            log_success("Virtual controller successfully initialized.")
+            log_success(t("farm.controller_ok"))
         except Exception as e:
             raise RuntimeError(f"Failed to initialize virtual controller: {e}") from e
     else:
-        log_info("Reusing existing virtual controller from parent module.")
+        log_info(t("farm.controller_reuse"))
 
     # 倒计时（无自动聚焦时）
     if not hwnd:
         print()
         for i in range(5, 0, -1):
-            print(
-                f"\r{Fore.YELLOW}[WAIT]{Style.RESET_ALL} Please switch to the Forza Horizon 6 window... {i}s remaining",
+            safe_print(
+                f"\r{Fore.YELLOW}[WAIT]{Style.RESET_ALL} {t('farm.switch_window', sec=i)}",
                 end="",
                 flush=True,
             )
             time.sleep(1.0)
         print("\n")
 
-    log_info("Starting Real-time Visual State Machine loop (Press Ctrl+C to terminate)...")
+    log_info(t("farm.loop_start"))
 
     # 5. 创建状态机并加载保存的进度
     sct = get_mss()
@@ -729,9 +707,7 @@ def main(gamepad: vg.VX360Gamepad | None = None) -> None:
 
         elapsed_hours = (time.time() - start_time) / 3600
         if elapsed_hours >= max_runtime_hours:
-            raise RuntimeError(
-                f"State Machine safety timeout: ran for {elapsed_hours:.1f} hours without completing all races."
-            )
+            raise RuntimeError(t("farm.timeout", hours=elapsed_hours))
     finally:
         try:
             gamepad.right_trigger(value=0)
@@ -739,9 +715,9 @@ def main(gamepad: vg.VX360Gamepad | None = None) -> None:
             if owns_gamepad:
                 gamepad.reset()
                 gamepad.update()
-                log_info("Virtual controller safely released.")
+                log_info(t("farm.controller_released"))
             else:
-                log_info("RT released. Controller ownership retained by parent module.")
+                log_info(t("farm.controller_retained"))
         except Exception:
             pass
         # 注意: 不关闭 sct (MSS 全局单例)

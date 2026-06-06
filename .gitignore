@@ -72,6 +72,11 @@ tests/_legacy_*
 # 运行时数据目录（每台机器独立生成）
 # ==========================================
 data/
+# legacy (pre-data/ consolidation) — ignore if still present in root
+play_archive.txt
+play_archive.jsonl
+race_state.json
+state_references.json
 
 # ==========================================
 # 本地工具链（Tesseract 安装包等）

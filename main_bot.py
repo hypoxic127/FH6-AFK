@@ -191,7 +191,7 @@ def _select_language() -> str:
             return "en"
         if choice == "2":
             return "zh"
-        print("  ❌ Invalid / 无效")
+        print("  ❌ Invalid")
 
 
 def _select_mode(lang: str) -> str:

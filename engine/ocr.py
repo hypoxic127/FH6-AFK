@@ -554,13 +554,13 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
         x, y, w, h = cv2.boundingRect(top)
         try:
             safe_print(
-                f"{Fore.RED}[DYNAMIC VISION]{Style.RESET_ALL} 所有轮廓均未通过车库网格校验！最大轮廓: {w}x{h} at ({x + w // 2 + crop_x_offset}, {y + h // 2 + crop_y_offset}), 面积={cv2.contourArea(top):.0f}"
+                f"{Fore.RED}{t('ocr.contour_fail', w=w, h=h, cx=x + w // 2 + crop_x_offset, cy=y + h // 2 + crop_y_offset, area=f'{cv2.contourArea(top):.0f}')}{Style.RESET_ALL}"
             )
         except Exception:
             pass
         return None
     except Exception as e:
-        log_error(f"find_cursor_position 执行出错: {e}")
+        log_error(t("ocr.cursor_error", err=e))
     return None
 
 
@@ -623,7 +623,7 @@ def verify_new_target_car(
         has_keyword = len(matched_kws) >= IMPREZA_22B_MIN_MATCH
 
         if has_keyword:
-            safe_print(f"{Fore.GREEN}  [多关键词命中] 匹配 {len(matched_kws)}/3: {matched_kws}{Style.RESET_ALL}")
+            safe_print(f"{Fore.GREEN}{t('ocr.keyword_hit', n=len(matched_kws), kws=matched_kws)}{Style.RESET_ALL}")
 
         # --- 校验 2: HSV 颜色检查（寻找 'NEW' 黄色标签） ---
         # NEW 标签位于卡片右侧 → 高度 71%-82%、宽度 82%-96%
@@ -655,33 +655,31 @@ def verify_new_target_car(
         # --- 综合判断（三重校验） ---
         if has_keyword and has_new_tag and has_legendary:
             log_success(
-                f"[锁定成功] 三重校验通过！关键词 {len(matched_kws)}/3 {matched_kws} + NEW标签 ({yellow_pixels}px) + LEGENDARY ({orange_pixels}px)"
+                t("ocr.lock_ok", n=len(matched_kws), kws=matched_kws, yellow=yellow_pixels, orange=orange_pixels)
             )
             return True
         else:
             # 打印失败原因（方便调试）
-            log_warning("[锁定失败] 三重校验未全部通过:")
+            log_warning(t("ocr.lock_fail"))
             if not has_keyword:
-                log_warning(
-                    f"  ❌ 原因1：关键词不足 (命中 {len(matched_kws)}/3 {matched_kws}, 需≥2, OCR: '{text.replace(chr(10), ' ')}')"
-                )
+                log_warning(t("ocr.lock_r1_fail", n=len(matched_kws), kws=matched_kws, text=text.replace(chr(10), " ")))
             else:
-                log_success(f"  ✓ 检查1：关键词命中 {len(matched_kws)}/3 {matched_kws}")
+                log_success(t("ocr.lock_r1_ok", n=len(matched_kws), kws=matched_kws))
 
             if not has_new_tag:
-                log_warning(f"  ❌ 原因2：没有检测到 'NEW' 标签 (黄色像素: {yellow_pixels} <= 300)")
+                log_warning(t("ocr.lock_r2_fail", px=yellow_pixels))
             else:
-                log_success(f"  ✓ 检查2：检测到 'NEW' 标签 (黄色像素: {yellow_pixels})")
+                log_success(t("ocr.lock_r2_ok", px=yellow_pixels))
 
             if not has_legendary:
-                log_warning(f"  ❌ 原因3：不是 LEGENDARY (橙色像素: {orange_pixels} <= 200)")
+                log_warning(t("ocr.lock_r3_fail", px=orange_pixels))
             else:
-                log_success(f"  ✓ 检查3：LEGENDARY 橙色标签 (橙色像素: {orange_pixels})")
+                log_success(t("ocr.lock_r3_ok", px=orange_pixels))
 
             return False
 
     except Exception as e:
-        log_error(f"verify_new_target_car 校验出错: {e}")
+        log_error(t("ocr.verify_error", err=e))
     return False
 
 
@@ -721,14 +719,12 @@ def check_new_tag_only(image: np.ndarray | None, cursor_x: int, cursor_y: int) -
 
         has_new = yellow_pixels > 300
         if has_new:
-            log_success(f"[NEW 标签检测] ✓ 检测到 NEW 标签 (黄色像素: {yellow_pixels}，区域:卡片底部)")
+            log_success(t("ocr.new_tag_ok", px=yellow_pixels))
         else:
-            log_warning(
-                f"[NEW 标签检测] ✗ 未检测到 NEW 标签 (黄色像素: {yellow_pixels} <= 300，区域:卡片底部)，可能已加过点"
-            )
+            log_warning(t("ocr.new_tag_fail", px=yellow_pixels))
         return has_new
     except Exception as e:
-        log_error(f"check_new_tag_only 出错: {e}")
+        log_error(t("ocr.new_tag_error", err=e))
     return False
 
 
@@ -775,18 +771,18 @@ def check_is_high_class(image: np.ndarray | None, cursor_x: int, cursor_y: int) 
 
         # 判定: 蓝色多 → S2，橙色多 → B 级
         if blue_pixels > orange_pixels and blue_pixels > 50:
-            log_warning(f"[PI 检测] ⚠ 检测到高级别车辆 (蓝色: {blue_pixels} > 橙色: {orange_pixels})")
+            log_warning(t("ocr.pi_high", blue=blue_pixels, orange=orange_pixels))
             return True
 
         if orange_pixels > blue_pixels and orange_pixels > 50:
-            log_success(f"[PI 检测] ✓ B 级车辆 (橙色: {orange_pixels} > 蓝色: {blue_pixels})")
+            log_success(t("ocr.pi_b_class", orange=orange_pixels, blue=blue_pixels))
             return False
 
         # 兜底: 两种颜色都不明确，保守处理 — 宁可漏删不可误删 S2 主力车
-        log_warning(f"[PI 检测] ⚠ 颜色不明确 (蓝色: {blue_pixels}, 橙色: {orange_pixels})，保守跳过")
+        log_warning(t("ocr.pi_ambiguous", blue=blue_pixels, orange=orange_pixels))
         return True
     except Exception as e:
-        log_error(f"check_is_high_class 出错: {e}")
+        log_error(t("ocr.pi_error", err=e))
     return False
 
 
@@ -853,7 +849,7 @@ def read_text_in_roi(
         text = pytesseract.image_to_string(gray, config=config_str).strip().lower()
         return text
     except Exception as e:
-        log_error(f"read_text_in_roi OCR 识别出错: {e}")
+        log_error(t("ocr.roi_error", err=e))
     return ""
 
 
@@ -900,7 +896,7 @@ def has_cell_below(image: np.ndarray | None, cursor_x: int, cursor_y: int) -> bo
 
         # 超出画面底部 → 没有下一行
         if sy1 >= h - 30:
-            safe_print(f"{Fore.YELLOW}[GRID]{Style.RESET_ALL} 下方超出画面边界 (sy1={sy1}, h={h})")
+            safe_print(f"{Fore.YELLOW}[GRID]{Style.RESET_ALL} {t('ocr.grid_oob', sy1=sy1, h=h)}")
             return False
 
         sample = image[sy1:sy2, sx1:sx2]
@@ -916,12 +912,12 @@ def has_cell_below(image: np.ndarray | None, cursor_x: int, cursor_y: int) -> bo
         has_car = mean_brightness > 40 or std_brightness > 15
 
         safe_print(
-            f"{Fore.CYAN}[GRID]{Style.RESET_ALL} 下方单元格检测: 亮度={mean_brightness:.1f}, 方差={std_brightness:.1f} → {'有车' if has_car else '空位'}"
+            f"{Fore.CYAN}[GRID]{Style.RESET_ALL} {t('ocr.grid_result', bright=f'{mean_brightness:.1f}', var=f'{std_brightness:.1f}', result=t('ocr.grid_has_car') if has_car else t('ocr.grid_empty'))}"
         )
         return has_car
 
     except Exception as e:
-        log_error(f"has_cell_below 检测出错: {e}")
+        log_error(t("ocr.cell_below_error", err=e))
     return False
 
 
@@ -972,12 +968,11 @@ def is_empty_slot(image: np.ndarray, cursor_x: int, cursor_y: int) -> bool:
         if is_empty:
             safe_print(
                 f"{Fore.YELLOW}[GRID]{Style.RESET_ALL} "
-                f"空位检测: 亮度={mean_brightness:.1f}, "
-                f"方差={std_brightness:.1f} → 空位"
+                f"{t('ocr.empty_slot_detect', bright=f'{mean_brightness:.1f}', var=f'{std_brightness:.1f}')}"
             )
         return is_empty
     except Exception as e:
-        log_error(f"is_empty_slot 检测出错: {e}")
+        log_error(t("ocr.empty_slot_error", err=e))
     return True
 
 
@@ -1054,5 +1049,5 @@ def detect_selected_brand_tab(
         text = pytesseract.image_to_string(sel_thresh, config="--psm 7").strip().lower()
         return text if text else None
     except Exception as e:
-        log_error(f"detect_selected_brand_tab OCR 异常: {e}")
+        log_error(t("ocr.brand_tab_error", err=e))
         return None

@@ -216,16 +216,17 @@ def start_server(port: int = 6800) -> None:
     global _lan_url
     local_ip = _get_local_ip()
     _lan_url = f"http://{local_ip}:{port}"
+    from engine.i18n import t
     from engine.utils import safe_print
 
     safe_print("")
     safe_print("=" * 55)
-    safe_print("   🌐 FH6 AutoBot — Web UI 控制面板")
+    safe_print(t("web.banner_title"))
     safe_print("=" * 55)
     safe_print("")
-    safe_print(f"   本机访问:   http://localhost:{port}")
-    safe_print(f"   局域网访问: http://{local_ip}:{port}")
-    safe_print("   手机扫码或输入上方地址即可远程监控")
+    safe_print(t("web.banner_local", port=port))
+    safe_print(t("web.banner_lan", ip=local_ip, port=port))
+    safe_print(t("web.banner_hint"))
     safe_print("")
     safe_print("=" * 55)
     safe_print("")

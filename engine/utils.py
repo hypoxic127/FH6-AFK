@@ -178,7 +178,9 @@ def force_foreground(hwnd):
 
     如果窗口处于最小化状态（IsIconic），还会先恢复窗口。
     """
-    log_info("正在将游戏窗口置于最前...")
+    from engine.i18n import t
+
+    log_info(t("utils.bring_foreground"))
     ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # ALT 按下
     ctypes.windll.user32.SetForegroundWindow(hwnd)
     ctypes.windll.user32.keybd_event(0x12, 0, 2, 0)  # ALT 释放

@@ -1194,4 +1194,155 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "  ✅ In the car!",
         "zh": "  ✅ 已上车！",
     },
+    # ------------------------------------------------------------------
+    # OCR verification logs (engine/ocr.py)
+    # ------------------------------------------------------------------
+    "ocr.contour_fail": {
+        "en": "[DYNAMIC VISION] All contours failed garage grid check! Largest: {w}x{h} at ({cx}, {cy}), area={area}",
+        "zh": "[DYNAMIC VISION] 所有轮廓均未通过车库网格校验！最大轮廓: {w}x{h} at ({cx}, {cy}), 面积={area}",
+    },
+    "ocr.cursor_error": {
+        "en": "find_cursor_position error: {err}",
+        "zh": "find_cursor_position 执行出错: {err}",
+    },
+    "ocr.keyword_hit": {
+        "en": "  [Multi-keyword hit] Matched {n}/3: {kws}",
+        "zh": "  [多关键词命中] 匹配 {n}/3: {kws}",
+    },
+    "ocr.lock_ok": {
+        "en": "[Lock OK] Triple check passed! Keywords {n}/3 {kws} + NEW tag ({yellow}px) + LEGENDARY ({orange}px)",
+        "zh": "[锁定成功] 三重校验通过！关键词 {n}/3 {kws} + NEW标签 ({yellow}px) + LEGENDARY ({orange}px)",
+    },
+    "ocr.lock_fail": {
+        "en": "[Lock FAIL] Triple check not all passed:",
+        "zh": "[锁定失败] 三重校验未全部通过:",
+    },
+    "ocr.lock_r1_fail": {
+        "en": "  ❌ Reason 1: Keywords insufficient (hit {n}/3 {kws}, need≥2, OCR: '{text}')",
+        "zh": "  ❌ 原因1：关键词不足 (命中 {n}/3 {kws}, 需≥2, OCR: '{text}')",
+    },
+    "ocr.lock_r1_ok": {
+        "en": "  ✓ Check 1: Keywords matched {n}/3 {kws}",
+        "zh": "  ✓ 检查1：关键词命中 {n}/3 {kws}",
+    },
+    "ocr.lock_r2_fail": {
+        "en": "  ❌ Reason 2: No 'NEW' tag detected (yellow pixels: {px} <= 300)",
+        "zh": "  ❌ 原因2：没有检测到 'NEW' 标签 (黄色像素: {px} <= 300)",
+    },
+    "ocr.lock_r2_ok": {
+        "en": "  ✓ Check 2: 'NEW' tag detected (yellow pixels: {px})",
+        "zh": "  ✓ 检查2：检测到 'NEW' 标签 (黄色像素: {px})",
+    },
+    "ocr.lock_r3_fail": {
+        "en": "  ❌ Reason 3: Not LEGENDARY (orange pixels: {px} <= 200)",
+        "zh": "  ❌ 原因3：不是 LEGENDARY (橙色像素: {px} <= 200)",
+    },
+    "ocr.lock_r3_ok": {
+        "en": "  ✓ Check 3: LEGENDARY badge (orange pixels: {px})",
+        "zh": "  ✓ 检查3：LEGENDARY 橙色标签 (橙色像素: {px})",
+    },
+    "ocr.verify_error": {
+        "en": "verify_new_target_car error: {err}",
+        "zh": "verify_new_target_car 校验出错: {err}",
+    },
+    "ocr.new_tag_ok": {
+        "en": "[NEW tag] ✓ NEW tag detected (yellow pixels: {px}, area: card bottom)",
+        "zh": "[NEW 标签检测] ✓ 检测到 NEW 标签 (黄色像素: {px}，区域:卡片底部)",
+    },
+    "ocr.new_tag_fail": {
+        "en": "[NEW tag] ✗ No NEW tag (yellow pixels: {px} <= 300, area: card bottom), may already have skill points",
+        "zh": "[NEW 标签检测] ✗ 未检测到 NEW 标签 (黄色像素: {px} <= 300，区域:卡片底部)，可能已加过点",
+    },
+    "ocr.new_tag_error": {
+        "en": "check_new_tag_only error: {err}",
+        "zh": "check_new_tag_only 出错: {err}",
+    },
+    "ocr.pi_high": {
+        "en": "[PI detect] ⚠ High-class vehicle detected (blue: {blue} > orange: {orange})",
+        "zh": "[PI 检测] ⚠ 检测到高级别车辆 (蓝色: {blue} > 橙色: {orange})",
+    },
+    "ocr.pi_b_class": {
+        "en": "[PI detect] ✓ B-class vehicle (orange: {orange} > blue: {blue})",
+        "zh": "[PI 检测] ✓ B 级车辆 (橙色: {orange} > 蓝色: {blue})",
+    },
+    "ocr.pi_ambiguous": {
+        "en": "[PI detect] ⚠ Color ambiguous (blue: {blue}, orange: {orange}), skip conservatively",
+        "zh": "[PI 检测] ⚠ 颜色不明确 (蓝色: {blue}, 橙色: {orange})，保守跳过",
+    },
+    "ocr.pi_error": {
+        "en": "check_is_high_class error: {err}",
+        "zh": "check_is_high_class 出错: {err}",
+    },
+    # ------------------------------------------------------------------
+    # Web server banner (web/server.py)
+    # ------------------------------------------------------------------
+    "web.banner_title": {
+        "en": "   🌐 FH6 AutoBot — Web UI Dashboard",
+        "zh": "   🌐 FH6 AutoBot — Web UI 控制面板",
+    },
+    "web.banner_local": {
+        "en": "   Local:   http://localhost:{port}",
+        "zh": "   本机访问:   http://localhost:{port}",
+    },
+    "web.banner_lan": {
+        "en": "   LAN:     http://{ip}:{port}",
+        "zh": "   局域网访问: http://{ip}:{port}",
+    },
+    "web.banner_hint": {
+        "en": "   Open the URL above on your phone to monitor remotely",
+        "zh": "   手机扫码或输入上方地址即可远程监控",
+    },
+    # ------------------------------------------------------------------
+    # main_bot.py
+    # ------------------------------------------------------------------
+    "main.invalid_input": {
+        "en": "  ❌ Invalid",
+        "zh": "  ❌ 无效",
+    },
+    # ------------------------------------------------------------------
+    # OCR additional logs (engine/ocr.py)
+    # ------------------------------------------------------------------
+    "ocr.roi_error": {
+        "en": "read_text_in_roi OCR error: {err}",
+        "zh": "read_text_in_roi OCR 识别出错: {err}",
+    },
+    "ocr.grid_oob": {
+        "en": "[GRID] Below area out of bounds (sy1={sy1}, h={h})",
+        "zh": "[GRID] 下方超出画面边界 (sy1={sy1}, h={h})",
+    },
+    "ocr.grid_result": {
+        "en": "[GRID] Below cell check: brightness={bright}, variance={var} → {result}",
+        "zh": "[GRID] 下方单元格检测: 亮度={bright}, 方差={var} → {result}",
+    },
+    "ocr.grid_has_car": {
+        "en": "has car",
+        "zh": "有车",
+    },
+    "ocr.grid_empty": {
+        "en": "empty slot",
+        "zh": "空位",
+    },
+    "ocr.cell_below_error": {
+        "en": "has_cell_below error: {err}",
+        "zh": "has_cell_below 检测出错: {err}",
+    },
+    "ocr.empty_slot_detect": {
+        "en": "[GRID] Empty slot: brightness={bright}, variance={var} → empty",
+        "zh": "[GRID] 空位检测: 亮度={bright}, 方差={var} → 空位",
+    },
+    "ocr.empty_slot_error": {
+        "en": "is_empty_slot error: {err}",
+        "zh": "is_empty_slot 检测出错: {err}",
+    },
+    "ocr.brand_tab_error": {
+        "en": "detect_selected_brand_tab OCR error: {err}",
+        "zh": "detect_selected_brand_tab OCR 异常: {err}",
+    },
+    # ------------------------------------------------------------------
+    # Utils (engine/utils.py)
+    # ------------------------------------------------------------------
+    "utils.bring_foreground": {
+        "en": "Bringing game window to foreground...",
+        "zh": "正在将游戏窗口置于最前...",
+    },
 }

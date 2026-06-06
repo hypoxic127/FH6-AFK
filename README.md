@@ -116,6 +116,7 @@ Before starting the bot, ensure the following:
 3. **Purchase main car** — `1998 Subaru Impreza 22B-STI Version`
 4. **Install S2 tune** — Any S2-class tune (PI badge = blue)
 5. **Favorite the EventLab blueprint** — Share code `890169683`
+6. **Enable Auto-Steering** — Go to `Settings → Difficulty → Auto-Steering: ON`. The bot relies on auto-steering for autonomous driving in EventLab
 
 > **⚠️ Important:** The S2 **blue PI badge** on the main car is the sole indicator the program uses to distinguish "keep" vs "deletable" cars. Make sure your main car has an S2 tune applied.
 

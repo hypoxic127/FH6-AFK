@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-FORZA HORIZON 6 AUTOBOT — 主程序启动入口 (main_bot.py)
-======================================================
-本脚本作为整个自动化系统的入口点，提供交互式菜单让用户选择起始阶段。
+FORZA HORIZON 6 AUTOBOT — Main Entry Point (main_bot.py)
+=========================================================
+Entry point for the full automation system. Provides an interactive
+bilingual (EN/CN) menu for selecting the startup phase.
 
-四大阶段循环：
-  刷技能点 → 买车 → 加技能点 → 卖车 → (循环)
+Four-phase loop / 四阶段循环:
+  Farm Points → Buy Cars → Upgrade Cars → Trash Cars → (loop)
 
-使用方法:
+Usage / 使用方法:
     python main_bot.py
 
-选择 [0] 进入全自动无限循环（默认从刷技能点开始），
-选择 [1]-[4] 从指定阶段开始运行。
+Select [0] for full auto-loop (default: start from Farm Points).
+Select [1]-[4] to start from a specific phase.
 """
 
 from macro import (
@@ -24,116 +25,119 @@ from macro import (
 
 
 def show_start_menu():
-    """
-    显示起始阶段选择菜单。
+    """Display the bilingual startup phase selection menu.
 
-    用户可以选择从哪个阶段开始运行状态机：
-      [0] 自动循环 — 从 STATE_FARM_POINTS 开始完整四阶段循环(在菜单使用)
-      [1] 刷技能点 — 进入 EventLab 自动跑图刷满 999 技能点(在菜单使用)
-      [2] 买车      — 导航至 Car Collection → 批量购买 Subaru Impreza(在菜单使用)
-      [3] 加技能点  — 进入车库 → 逐辆 Impreza 消耗技能点升级技能树(在菜单使用)
-      [4] 卖车      — 进入车库 → 批量移除已升级完的 Impreza(在车库并且选中斯巴鲁品牌使用)
-
-    返回:
-        str 或 None: 对应的状态常量（如 STATE_FARM_POINTS），
-                     返回 None 表示从默认的 FARM_POINTS 开始
+    Returns:
+        tuple[str | None, bool]: (state constant, skip_buy flag)
     """
-    print("\n" + "=" * 50)
-    print("   FORZA HORIZON 6 AUTOBOT - 启动菜单")
-    print("=" * 50)
+    print("\n" + "=" * 58)
+    print("   FORZA HORIZON 6 AUTOBOT — Startup Menu / 启动菜单")
+    print("=" * 58)
     print()
-    print("  [1] 🏎️  刷技能点  (STATE_FARM_POINTS) — 在菜单使用")
-    print("       OCR 扫描当前技能点 → 自动跑 EventLab 刷满 999")
+    print("  [1] 🏎️  Farm Points / 刷技能点  (STATE_FARM_POINTS)")
+    print("       OCR scan skill points → auto-grind EventLab to 999")
+    print("       OCR 扫描技能点 → 自动跑 EventLab 刷满 999")
     print()
-    print("  [2] 🛒  买车      (STATE_BUY_CARS) — 在菜单使用")
+    print("  [2] 🛒  Buy Cars / 买车  (STATE_BUY_CARS)")
+    print("       Navigate to Car Collection → bulk-buy Subaru Impreza")
     print("       导航至 Car Collection → 批量购买 Subaru Impreza")
     print()
-    print("  [3] ⚡  加技能点  (STATE_UPGRADE_CARS) — 在菜单使用")
+    print("  [3] ⚡  Upgrade Cars / 加技能点  (STATE_UPGRADE_CARS)")
+    print("       Enter garage → spend skill points on each Impreza")
     print("       进入车库 → 逐辆选择 Impreza 并消耗技能点升级")
     print()
-    print("  [4] 🗑️  卖车      (STATE_TRASH_CARS) — 在车库 Subaru 页使用")
+    print("  [4] 🗑️  Trash Cars / 卖车  (STATE_TRASH_CARS)")
+    print("       Enter garage → batch-remove upgraded Imprezas")
     print("       进入车库 → 批量移除已升级完的 Impreza")
     print()
-    print("  [5] ⏭️  跳过买车  (刷点 → 加点 → 卖车 循环) — 在菜单使用")
+    print("  [5] ⏭️  Skip Buy / 跳过买车  (Farm → Upgrade → Trash)")
+    print("       Skip buying phase; use cars already in garage")
     print("       跳过买车阶段，适用于车库已有未加点的车")
     print()
-    print("  [0] 🔄  自动循环  (默认：从刷点开始完整循环) — 在菜单使用")
+    print("  [0] 🔄  Auto Loop / 自动循环  (default / 默认)")
+    print("       Full 4-phase loop starting from Farm Points")
+    print("       从刷技能点开始完整四阶段循环")
     print()
-    print("=" * 50)
+    print("=" * 58)
 
-    # 建立选项编号到状态常量的映射关系
-    state_map = {
-        "0": None,  # 默认从 FARM_POINTS 开始
+    # Map option numbers to state constants
+    state_map: dict[str, str | None] = {
+        "0": None,  # Default: start from FARM_POINTS
         "1": STATE_FARM_POINTS,
         "2": STATE_BUY_CARS,
         "3": STATE_UPGRADE_CARS,
         "4": STATE_TRASH_CARS,
-        "5": STATE_FARM_POINTS,  # 跳过买车，从刷点开始循环
+        "5": STATE_FARM_POINTS,  # Skip buy, loop from farm
     }
 
-    # 循环等待用户输入有效选项
+    # Bilingual display names
+    names: dict[str | None, str] = {
+        None: "Auto Loop / 自动循环",
+        STATE_FARM_POINTS: "Farm Points / 刷技能点",
+        STATE_BUY_CARS: "Buy Cars / 买车",
+        STATE_UPGRADE_CARS: "Upgrade Cars / 加技能点",
+        STATE_TRASH_CARS: "Trash Cars / 卖车",
+    }
+
+    # Wait for valid input
     while True:
-        choice = input("  请选择起始阶段 [0-5] (默认 0): ").strip()
+        choice = input("  Select phase / 选择阶段 [0-5] (default 0): ").strip()
         if choice == "":
-            choice = "0"  # 空输入视为选择默认项
+            choice = "0"  # Empty input → default
         if choice in state_map:
             selected = state_map[choice]
             skip_buy = choice == "5"
-            # 状态常量到中文名称的映射（用于提示信息）
-            names = {
-                None: "自动循环 (从刷点开始)",
-                STATE_FARM_POINTS: "刷技能点",
-                STATE_BUY_CARS: "买车",
-                STATE_UPGRADE_CARS: "加技能点",
-                STATE_TRASH_CARS: "卖车",
-            }
             if skip_buy:
-                print("\n  ✅ 已选择: 跳过买车循环 (刷点 → 加点 → 卖车)")
+                print("\n  ✅ Selected: Skip Buy loop / 跳过买车循环 (Farm → Upgrade → Trash)")
             else:
-                print(f"\n  ✅ 已选择: {names[selected]}")
+                print(f"\n  ✅ Selected / 已选择: {names[selected]}")
             print()
             return selected, skip_buy
         else:
-            print("  ❌ 无效选择，请输入 0-5 之间的数字。")
+            print("  ❌ Invalid choice / 无效选择, enter 0-5.")
 
 
 def _select_mode() -> str:
-    """启动时让用户选择运行模式：WebUI 或控制台。
+    """Display bilingual mode selection menu at startup.
 
-    返回:
-        str: "web" 或 "console"
+    Returns:
+        str: "web" or "console"
     """
-    print("\n" + "=" * 50)
-    print("   FH6-AFK — 启动模式选择")
-    print("=" * 50)
+    print("\n" + "=" * 58)
+    print("   FH6-AFK — Mode Selection / 启动模式选择")
+    print("=" * 58)
     print()
-    print("  [1] 🌐  Web UI 控制面板")
+    print("  [1] 🌐  Web UI Dashboard / 控制面板")
+    print("       Browser-based GUI, supports remote monitoring")
     print("       浏览器可视化操作，支持手机远程监控")
     print()
-    print("  [2] 💻  终端控制台模式")
+    print("  [2] 💻  Terminal Console / 终端控制台")
+    print("       Classic CLI interaction for advanced users")
     print("       经典命令行交互，适合高级用户")
     print()
-    print("=" * 50)
+    print("=" * 58)
 
     while True:
-        choice: str = input("  请选择模式 [1/2] (默认 1): ").strip()
+        choice: str = input("  Select mode / 选择模式 [1/2] (default 1): ").strip()
         if choice in ("", "1"):
             return "web"
         if choice == "2":
             return "console"
-        print("  ❌ 无效选择，请输入 1 或 2。")
+        print("  ❌ Invalid choice / 无效选择, enter 1 or 2.")
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="FH6 AutoBot — 全自动挂机工具")
-    parser.add_argument("--web", action="store_true", help="直接启动 Web UI（跳过模式选择）")
-    parser.add_argument("--console", action="store_true", help="直接启动控制台（跳过模式选择）")
-    parser.add_argument("--port", type=int, default=6800, help="Web UI 端口 (默认 6800)")
+    parser = argparse.ArgumentParser(
+        description="FH6 AutoBot — Full AFK Automation Tool / 全自动挂机工具"
+    )
+    parser.add_argument("--web", action="store_true", help="Launch Web UI directly / 直接启动 Web UI")
+    parser.add_argument("--console", action="store_true", help="Launch console directly / 直接启动控制台")
+    parser.add_argument("--port", type=int, default=6800, help="Web UI port (default 6800)")
     args = parser.parse_args()
 
-    # 优先级：命令行参数 > 交互选择
+    # Priority: CLI flags > interactive selection
     if args.web:
         mode = "web"
     elif args.console:
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     if mode == "web":
         from web.server import start_server
 
-        print(f"\n  🚀 正在启动 Web UI (http://localhost:{args.port}) ...\n")
+        print(f"\n  🚀 Launching Web UI / 启动 Web UI (http://localhost:{args.port}) ...\n")
         start_server(port=args.port)
     else:
         initial_state, skip_buy = show_start_menu()

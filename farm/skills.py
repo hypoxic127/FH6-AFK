@@ -394,7 +394,7 @@ class FarmStateMachine:
             # 每个 interval 触发一次 A 按键（容差 0.3s）
             if abs(elapsed - expected_time) < 0.3:
                 log_warning(t("farm.wait_next_timeout_retry", sec=int(elapsed)))
-                press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
+                press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=0)
 
         time.sleep(0.2)
 

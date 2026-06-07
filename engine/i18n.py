@@ -224,8 +224,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "zh": "⚠ 跳过了 Next 画面 — 已在自由漫游中。按 START...",
     },
     "farm.wait_next_timeout_retry": {
-        "en": "⚠ Next screen not detected after {sec}s, pressing A to advance...",
-        "zh": "⚠ 等待 {sec}s 仍未检测到 Next 画面，按 A 推进...",
+        "en": "⚠ Next screen not detected after {sec}s, pressing B to advance...",
+        "zh": "⚠ 等待 {sec}s 仍未检测到 Next 画面，按 B 推进...",
     },
     "farm.wait_next_force_exit": {
         "en": "⚠ Force exit after {sec}s — Next screen never detected. Pressing B...",

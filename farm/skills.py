@@ -194,6 +194,7 @@ class FarmStateMachine:
         self.entering_race: bool = False
         self.waiting_for_next: bool = False
         self.waiting_for_gameplay: bool = False
+        self._wait_next_start: float = 0.0  # 进入 waiting_for_next 的时间戳
         self.points_scanned: bool = False
 
         # 计数器
@@ -332,17 +333,69 @@ class FarmStateMachine:
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
             self.is_racing = False
             self.waiting_for_next = True
+            self._wait_next_start = time.time()
             log_info(t("farm.wait_next"))
 
+    _WAIT_NEXT_TIMEOUT: float = 20.0  # 超时阈值（秒）
+    _WAIT_NEXT_RETRY_INTERVAL: float = 5.0  # 超时后重试按 A 间隔
+    _WAIT_NEXT_FORCE_EXIT: float = 60.0  # 强制退出阈值
+
     def _handle_waiting_next(self, resized: np.ndarray) -> None:
-        """等待 Next 结算画面，按 B 退出。"""
+        """Wait for the 'What's Next' screen after reward animation.
+
+        Includes timeout + fallback:
+        - Detects NEXT_SCREEN → press B to exit.
+        - Detects PLAYING (free-roam) → press START to open menu directly.
+        - After 20s timeout → press A every 5s to advance reward animation.
+        - After 60s → force exit to waiting_for_gameplay.
+        """
+        elapsed = time.time() - self._wait_next_start
         next_state = self.detector.detect(resized, mode="racing")
+
+        # 正常路径：检测到 NEXT_SCREEN
         if next_state == "NEXT_SCREEN":
             log_success(t("farm.next_found"))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=0)
             self.waiting_for_next = False
             self.waiting_for_gameplay = True
             log_info(t("farm.wait_gameplay"))
+            return
+
+        # Fallback：已经回到自由漫游（跳过了 Next 画面）
+        if next_state == "PLAYING":
+            log_warning(t("farm.wait_next_skip_playing"))
+            press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=0)
+            self.waiting_for_next = False
+            self.waiting_for_gameplay = False
+            time.sleep(2.5)
+            # 走后续菜单状态机逻辑
+            if self.matches_needed <= 0:
+                clear_race_state()
+                safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.goal_reached_title')}")
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.goal_reached_desc')}")
+                safe_print(t("farm.goal_reached_menu"))
+                safe_print(f"{Fore.GREEN}{Style.BRIGHT}==========================================\n")
+                self.should_exit = True
+            return
+
+        # 超时强制退出（60s）：放弃等待，直接进入 gameplay 检测
+        if elapsed > self._WAIT_NEXT_FORCE_EXIT:
+            log_warning(t("farm.wait_next_force_exit", sec=int(elapsed)))
+            press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=0)
+            self.waiting_for_next = False
+            self.waiting_for_gameplay = True
+            return
+
+        # 超时重试（20s 后每 5s 按一次 A 推进奖励动画）
+        if elapsed > self._WAIT_NEXT_TIMEOUT:
+            interval_count = int((elapsed - self._WAIT_NEXT_TIMEOUT) / self._WAIT_NEXT_RETRY_INTERVAL)
+            expected_time = self._WAIT_NEXT_TIMEOUT + interval_count * self._WAIT_NEXT_RETRY_INTERVAL
+            # 每个 interval 触发一次 A 按键（容差 0.3s）
+            if abs(elapsed - expected_time) < 0.3:
+                log_warning(t("farm.wait_next_timeout_retry", sec=int(elapsed)))
+                press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
+
         time.sleep(0.2)
 
     def _handle_waiting_gameplay(self, resized: np.ndarray) -> None:
@@ -408,6 +461,7 @@ class FarmStateMachine:
                     log_success(t("farm.all_done", count=self.matches_completed))
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
                     self.waiting_for_next = True
+                    self._wait_next_start = time.time()
                     log_info(t("farm.wait_next"))
                 return True
         return False

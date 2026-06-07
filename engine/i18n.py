@@ -219,6 +219,18 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Rewards settled! Detected Next screen. Pressing B to exit...",
         "zh": "奖励已结算！检测到 Next 画面。按 B 退出...",
     },
+    "farm.wait_next_skip_playing": {
+        "en": "⚠ Next screen skipped — already in free-roam. Pressing START...",
+        "zh": "⚠ 跳过了 Next 画面 — 已在自由漫游中。按 START...",
+    },
+    "farm.wait_next_timeout_retry": {
+        "en": "⚠ Next screen not detected after {sec}s, pressing A to advance...",
+        "zh": "⚠ 等待 {sec}s 仍未检测到 Next 画面，按 A 推进...",
+    },
+    "farm.wait_next_force_exit": {
+        "en": "⚠ Force exit after {sec}s — Next screen never detected. Pressing B...",
+        "zh": "⚠ 等待 {sec}s 后强制退出 — 始终未检测到 Next 画面。按 B...",
+    },
     "farm.wait_gameplay": {
         "en": "Waiting for game window to return to gameplay...",
         "zh": "等待游戏画面回到自由漫游...",

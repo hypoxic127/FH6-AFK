@@ -120,8 +120,6 @@ a = Analysis(
 # 从 binaries 列表中排除 OpenCV ffmpeg DLL 和 OpenBLAS（共节省 ~47 MB）
 _exclude_binaries = {
     "opencv_videoio_ffmpeg",     # 27 MB — 视频编解码，不需要
-    "libcrypto",                 # 5 MB  — OpenSSL 加密库，不需要
-    "libssl",                    # 0.8 MB — OpenSSL，不需要
     "_avif",                     # 7.5 MB — AVIF 图片格式（PIL），不需要
     "_webp",                     # 0.4 MB — WebP 格式（PIL），不需要
 }

@@ -98,8 +98,6 @@ a = Analysis(
         "poplib",              # POP3 客户端
         "nntplib",             # NNTP 客户端
         "telnetlib",           # Telnet 客户端
-        "multiprocessing",     # 多进程（项目单进程）
-        "concurrent",          # 并发框架
         "curses",              # 终端 UI
 
         # === 不需要的开发工具 ===

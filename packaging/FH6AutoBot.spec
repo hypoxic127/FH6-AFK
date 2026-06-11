@@ -88,9 +88,6 @@ a = Analysis(
         # === 不需要的标准库模块 ===
         "tkinter",             # GUI 框架
         "unittest",            # 测试框架
-        "email",               # 邮件处理
-        "html",                # HTML 解析
-        "http",                # HTTP 客户端/服务器
         "xml",                 # XML 解析
         "xmlrpc",              # XML-RPC
         "pydoc",               # 文档生成
@@ -101,10 +98,8 @@ a = Analysis(
         "poplib",              # POP3 客户端
         "nntplib",             # NNTP 客户端
         "telnetlib",           # Telnet 客户端
-        "ssl",                 # SSL/TLS（无网络需求）
         "multiprocessing",     # 多进程（项目单进程）
         "concurrent",          # 并发框架
-        "asyncio",             # 异步IO
         "curses",              # 终端 UI
 
         # === 不需要的开发工具 ===

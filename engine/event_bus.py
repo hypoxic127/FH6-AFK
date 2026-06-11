@@ -80,8 +80,11 @@ class EventBus:
         for callback in listeners:
             try:
                 callback(data)
-            except Exception:
-                pass  # 监听器异常不影响其他监听器
+            except Exception as exc:
+                # Log to stderr to avoid infinite recursion via the bus
+                import sys
+
+                print(f"[EventBus] Listener error on '{event}': {exc}", file=sys.stderr)
 
 
 # ==========================================

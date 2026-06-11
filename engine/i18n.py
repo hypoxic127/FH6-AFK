@@ -393,6 +393,18 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "[Rate Event] Detected popup (yellow pixels: {count}). Pressing A to dismiss...",
         "zh": "[Rate Event] 检测到弹窗 (黄色像素: {count})。按 A 关闭...",
     },
+    "farm.rate_popup_error": {
+        "en": "Rate popup detection error: {err}",
+        "zh": "Rate 弹窗检测出错: {err}",
+    },
+    "farm.invalid_region": {
+        "en": "Invalid capture region (width={w}, height={h}), window may be minimized",
+        "zh": "截图区域无效 (宽={w}, 高={h})，窗口可能被最小化",
+    },
+    "farm.controller_cleanup_fail": {
+        "en": "Controller cleanup error (non-critical): {err}",
+        "zh": "控制器清理出错（非关键）: {err}",
+    },
     "farm.state_saved": {
         "en": "Race state saved: {remain} races remaining, {done} completed",
         "zh": "比赛状态已保存: 剩余 {remain} 场，已完成 {done} 场",
@@ -419,6 +431,18 @@ _STRINGS: dict[str, dict[str, str]] = {
     "ocr.tesseract_ok": {
         "en": "Tesseract is available in system PATH.",
         "zh": "Tesseract 可在系统 PATH 中找到。",
+    },
+    "ocr.debug_write_fail": {
+        "en": "Failed to write debug image '{path}': {err}",
+        "zh": "写入调试图片 '{path}' 失败: {err}",
+    },
+    "ocr.psm_error": {
+        "en": "[OCR PSM{psm}] Tesseract error: {err}",
+        "zh": "[OCR PSM{psm}] Tesseract 出错: {err}",
+    },
+    "ocr.zero_detect_error": {
+        "en": "[OCR] Zero-point fallback OCR error: {err}",
+        "zh": "[OCR] 零技能点保底 OCR 出错: {err}",
     },
     # ==================================================================
     #  macro/master_loop.py
@@ -1019,6 +1043,10 @@ _STRINGS: dict[str, dict[str, str]] = {
     "garage.non_legendary": {
         "en": "    [Zone] Non-LEGENDARY card (consecutive {n}/{max})",
         "zh": "    [区域检测] 非 LEGENDARY 卡片 (连续 {n}/{max})",
+    },
+    "garage.legendary_detect_err": {
+        "en": "    [Zone] LEGENDARY detection error: {err}",
+        "zh": "    [区域检测] LEGENDARY 检测出错: {err}",
     },
     "garage.has_below": {
         "en": "    [Row {row}] Car below, pressing D-pad Down...",

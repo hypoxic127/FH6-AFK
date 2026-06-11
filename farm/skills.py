@@ -247,6 +247,10 @@ class FarmStateMachine:
             (resized_1600x900, original_img) 或 (None, None)
         """
         try:
+            # Defense: skip grab if window coords are invalid (minimized/hidden)
+            if self.cw <= 0 or self.ch <= 0:
+                log_warning(t("farm.invalid_region", w=self.cw, h=self.ch))
+                return None, None
             monitor = {"top": self.cy, "left": self.cx, "width": self.cw, "height": self.ch}
             screenshot = self.sct.grab(monitor)
             img = np.array(screenshot)
@@ -277,8 +281,8 @@ class FarmStateMachine:
                     log_success(t("farm.rate_popup", count=yg_pixels))
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.0)
                     return True
-        except Exception:
-            pass
+        except (cv2.error, pytesseract.TesseractError) as e:
+            log_warning(t("farm.rate_popup_error", err=e))
         return False
 
     # ===================================================================
@@ -624,8 +628,8 @@ class FarmStateMachine:
                 resized, img = self._capture_frame()
                 if img is not None:
                     cv2.imwrite("debug/unknown_state.png", img)
-            except Exception:
-                pass
+            except (OSError, cv2.error) as e:
+                log_warning(t("ocr.debug_write_fail", path="unknown_state.png", err=e))
 
         # 自动恢复
         if self.unknown_consecutive_count >= 15 and not self.waiting_for_gameplay:
@@ -790,8 +794,8 @@ def main(gamepad: vg.VX360Gamepad | None = None) -> None:
                 log_info(t("farm.controller_released"))
             else:
                 log_info(t("farm.controller_retained"))
-        except Exception:
-            pass
+        except OSError as e:
+            log_warning(t("farm.controller_cleanup_fail", err=e))
         # 注意: 不关闭 sct (MSS 全局单例)
 
 

@@ -217,7 +217,8 @@ def _navigate_garage_grid(hwnd, gamepad, verify_fn, label="车", start_col=1, st
                             log_info(
                                 t("garage.non_legendary", n=consecutive_non_impreza, max=NON_IMPREZA_EXIT_THRESHOLD)
                             )
-            except Exception:
+            except (cv2.error, ValueError) as e:
+                log_warning(t("garage.legendary_detect_err", err=e))
                 if in_impreza_zone:
                     consecutive_non_impreza += 1
 

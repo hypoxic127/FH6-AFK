@@ -125,8 +125,8 @@ def capture_screenshot(hwnd):
             from engine.utils import reset_mss
 
             reset_mss()
-        except Exception:
-            pass
+        except OSError:
+            pass  # reset_mss close failure is non-critical
         return None, cx, cy, cw, ch
 
 
@@ -142,7 +142,8 @@ def capture_raw_screenshot(hwnd):
             cx, cy, cw, ch = get_client_rect(hwnd)
             if cw <= 0 or ch <= 0:
                 return None
-        except Exception:
+        except (OSError, Exception) as e:
+            log_warning(t("core.coord_fail", err=e))
             return None
     else:
         return None
@@ -152,5 +153,6 @@ def capture_raw_screenshot(hwnd):
         screenshot = sct.grab(monitor)
         img = np.array(screenshot)
         return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-    except Exception:
+    except Exception as e:
+        log_error(t("core.capture_fail", err=e))
         return None

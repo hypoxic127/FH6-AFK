@@ -214,8 +214,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
         try:
             os.makedirs("debug", exist_ok=True)
             cv2.imwrite("debug/skill_points_roi.png", roi)
-        except Exception:
-            pass
+        except OSError as e:
+            log_warning(t("ocr.debug_write_fail", path="skill_points_roi.png", err=e))
 
     # 图像预处理：蓝底黑字 → 灰度 → Otsu 阈值 → 反转为黑字白底
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -237,8 +237,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
         try:
             os.makedirs("debug", exist_ok=True)
             cv2.imwrite("debug/skill_points_processed.png", upscaled)
-        except Exception:
-            pass
+        except OSError as e:
+            log_warning(t("ocr.debug_write_fail", path="skill_points_processed.png", err=e))
 
     # ===== OCR 识别（PSM 6 + PSM 7 双模式，取位数最多的结果） =====
     # PSM 6（自动分割）在各种缩放/边距组合下表现最稳定。
@@ -253,8 +253,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
                 safe_print(f"{Fore.CYAN}{t('ocr.psm_result', psm=psm, val=val)}{Style.RESET_ALL}")
                 if best_val is None or len(text) > len(str(best_val)):
                     best_val = val
-        except Exception:
-            pass
+        except pytesseract.TesseractError as e:
+            log_warning(t("ocr.psm_error", psm=psm, err=e))
 
     if best_val is not None and best_val > 0:
         safe_print(f"{Fore.GREEN}{t('ocr.final_result', val=best_val)}{Style.RESET_ALL}")
@@ -269,8 +269,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
         if not raw_text or "no" in raw_text or "avail" in raw_text or "point" in raw_text:
             log_success(t("ocr.zero_detect", text=raw_text))
             return 0
-    except Exception:
-        pass
+    except pytesseract.TesseractError as e:
+        log_warning(t("ocr.zero_detect_error", err=e))
 
     return None
 
@@ -309,8 +309,8 @@ def _ocr_card_text(card_img: np.ndarray | None, debug_label: str = "CARD") -> st
             safe_print(f"{Fore.BLUE}Recognized text:")
             safe_print(Fore.WHITE + (text if text else "[empty]"))
             safe_print(f"{Fore.BLUE}{'=' * (len(debug_label) + 36)}\n")
-        except Exception:
-            pass  # safe_print 编码降级保护
+        except UnicodeEncodeError:
+            pass  # safe_print encoding fallback
         return text
     except Exception as e:
         log_error(f"_ocr_card_text ({debug_label}) error: {e}")
@@ -367,7 +367,7 @@ def has_green_selection_border(card_img: np.ndarray | None) -> bool:
             safe_print(
                 f"{Fore.GREEN}[BORDER DEBUG]{Style.RESET_ALL} 边缘绿色边框像素点计数: {green_pixel_count} / 800 (阈值)"
             )
-        except Exception:
+        except UnicodeEncodeError:
             pass
 
         return green_pixel_count >= 800
@@ -427,7 +427,7 @@ def has_green_selection_border_padded(
             safe_print(
                 f"{Fore.GREEN}[BORDER DEBUG]{Style.RESET_ALL} 区域(含外扩边框)绿色高亮像素点计数: {green_pixel_count} / 800 (阈值)"
             )
-        except Exception:
+        except UnicodeEncodeError:
             pass
 
         return green_pixel_count >= 800
@@ -516,7 +516,7 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
                     safe_print(
                         f"{Fore.YELLOW}[DYNAMIC VISION]{Style.RESET_ALL} 跳过异形轮廓: {w}x{h} (宽高比={aspect_ratio:.1f}>4.0), 面积={area:.0f}"
                     )
-                except Exception:
+                except UnicodeEncodeError:
                     pass
                 continue
 
@@ -526,7 +526,7 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
                     safe_print(
                         f"{Fore.YELLOW}[DYNAMIC VISION]{Style.RESET_ALL} 跳过过小轮廓: {w}x{h} (最短边={min_dim}<50), 面积={area:.0f}"
                     )
-                except Exception:
+                except UnicodeEncodeError:
                     pass
                 continue
 
@@ -536,7 +536,7 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
                     safe_print(
                         f"{Fore.YELLOW}[DYNAMIC VISION]{Style.RESET_ALL} 跳过顶部轮廓: (cx={cx}, cy={cy}) 在标签栏区域 (cy<=150), {w}x{h}"
                     )
-                except Exception:
+                except UnicodeEncodeError:
                     pass
                 continue
 
@@ -545,7 +545,7 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
                 safe_print(
                     f"{Fore.GREEN}[DYNAMIC VISION]{Style.RESET_ALL} 找到高亮焦点位置: (cx={cx}, cy={cy}), 边框尺寸: {w}x{h}, 面积: {area:.0f}"
                 )
-            except Exception:
+            except UnicodeEncodeError:
                 pass
             return cx, cy
 
@@ -556,7 +556,7 @@ def find_cursor_position(image: np.ndarray | None) -> tuple[int, int] | None:
             safe_print(
                 f"{Fore.RED}{t('ocr.contour_fail', w=w, h=h, cx=x + w // 2 + crop_x_offset, cy=y + h // 2 + crop_y_offset, area=f'{cv2.contourArea(top):.0f}')}{Style.RESET_ALL}"
             )
-        except Exception:
+        except UnicodeEncodeError:
             pass
         return None
     except Exception as e:

@@ -55,8 +55,8 @@ def reset_mss() -> None:
     if _mss_instance is not None:
         try:
             _mss_instance.close()
-        except Exception:
-            pass  # close 失败也无所谓，置空即可
+        except OSError:
+            pass  # close() failure is non-critical; instance will be reset
         _mss_instance = None
         from engine.i18n import t
 
@@ -96,8 +96,8 @@ def _emit_log(level: str, msg: str) -> None:
         from engine.event_bus import get_bus
 
         get_bus().emit("log", {"level": level, "msg": str(msg)})
-    except Exception:
-        pass
+    except (ImportError, RuntimeError):
+        pass  # event bus may not be ready during startup
 
 
 def log_info(msg):

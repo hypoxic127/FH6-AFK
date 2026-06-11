@@ -282,8 +282,8 @@ def run_master_bot_loop(
                             log_error(t("loop.farm_error", err=e))
                             try:
                                 module_farm_skills.clear_race_state()
-                            except Exception:
-                                pass
+                            except (ImportError, AttributeError) as cleanup_err:
+                                log_warning(f"Failed to clear race state: {cleanup_err}")
                             log_warning(t("loop.farm_retry"))
                             time.sleep(5.0)
                             continue
@@ -295,8 +295,8 @@ def run_master_bot_loop(
                             from engine.utils import reset_mss
 
                             reset_mss()
-                        except Exception:
-                            pass
+                        except (ImportError, OSError) as mss_err:
+                            log_warning(f"Failed to reset MSS: {mss_err}")
                         force_foreground(hwnd)
                         time.sleep(3.0)
 
@@ -347,8 +347,8 @@ def run_master_bot_loop(
                                 log_info(t("loop.verify_extra", races=extra_races))
                                 try:
                                     module_farm_skills.clear_race_state()
-                                except Exception:
-                                    pass
+                                except (ImportError, AttributeError) as cleanup_err:
+                                    log_warning(f"Failed to clear race state: {cleanup_err}")
                                 time.sleep(2.0)
                         else:
                             log_warning(t("loop.verify_ocr_fail"))

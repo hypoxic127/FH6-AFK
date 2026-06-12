@@ -389,6 +389,14 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Failed to capture screen: {err}",
         "zh": "截屏失败: {err}",
     },
+    "farm.capture_retry": {
+        "en": "MSS screenshot instance reset. Will retry capture on next tick.",
+        "zh": "MSS 截图实例已重置，将在下一帧重试截图。",
+    },
+    "farm.capture_reset_fail": {
+        "en": "Failed to reset MSS after capture error: {err}",
+        "zh": "截图失败后重置 MSS 出错: {err}",
+    },
     "farm.rate_popup": {
         "en": "[Rate Event] Detected popup (yellow pixels: {count}). Pressing A to dismiss...",
         "zh": "[Rate Event] 检测到弹窗 (黄色像素: {count})。按 A 关闭...",

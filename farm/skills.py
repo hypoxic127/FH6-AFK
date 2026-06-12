@@ -259,6 +259,19 @@ class FarmStateMachine:
             return resized, img
         except Exception as e:
             log_error(t("farm.capture_fail", err=e))
+            # Auto-recovery: reset MSS instance and re-foreground the window
+            # BitBlt failure corrupts the GDI DC; a fresh MSS instance fixes it
+            try:
+                from engine.utils import reset_mss
+
+                reset_mss()
+                self.sct = get_mss()
+                log_info(t("farm.capture_retry"))
+                # Re-foreground the game window (BitBlt often fails when window lost focus)
+                if self.hwnd:
+                    force_foreground(self.hwnd)
+            except Exception as reset_err:
+                log_warning(t("farm.capture_reset_fail", err=reset_err))
             return None, None
 
     # ===================================================================

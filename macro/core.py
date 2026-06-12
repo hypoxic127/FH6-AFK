@@ -155,4 +155,10 @@ def capture_raw_screenshot(hwnd):
         return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
     except Exception as e:
         log_error(t("core.capture_fail", err=e))
+        try:
+            from engine.utils import reset_mss
+
+            reset_mss()
+        except OSError:
+            pass
         return None

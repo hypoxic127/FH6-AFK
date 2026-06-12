@@ -220,8 +220,6 @@ def handle_do_update() -> None:
     def _pre_reboot() -> None:
         # 通知前端：即将重启，请显示"重启中"而非"断线"
         _socketio.emit("rebooting", {"msg": "Update complete, restarting..."})
-        import time
-
         time.sleep(0.5)  # 留时间给 WebSocket 发送完
 
     result: str = execute_update(progress_cb=_progress, pre_reboot_cb=_pre_reboot)

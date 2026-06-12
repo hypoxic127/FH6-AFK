@@ -98,6 +98,11 @@ def handle_start_bot(data: dict[str, Any] | None = None) -> None:
     _bot_stop_event.clear()
     clear_stop()
 
+    # Reset MSS to ensure a fresh GDI device context for the new run
+    from engine.utils import reset_mss
+
+    reset_mss()
+
     def _run_bot() -> None:
         """在子线程中运行 bot 主循环。"""
         try:
@@ -152,6 +157,11 @@ def handle_stop_bot() -> None:
     get_bus().emit("bot_stopped", {})
     _socketio.emit("bot_status", {"running": False})
     get_bus().emit("log", {"level": "warning", "msg": "⛔ Bot 已被 Web UI 手动停止"})
+
+    # Reset MSS — _kill_thread leaves GDI handles in corrupt state
+    from engine.utils import reset_mss
+
+    reset_mss()
 
 
 @_socketio.on("get_state")

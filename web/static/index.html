@@ -14,7 +14,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1>🏎️ FH6 AutoBot</h1>
+                <h1>🏎️ FH6 AutoBot <span id="version-badge" class="version-badge"></span></h1>
                 <span class="subtitle" data-i18n="subtitle">A Never-Ending AFK Farming Machine</span>
             </div>
             <div class="header-right">
@@ -39,6 +39,7 @@
                         </div>
                     </div>
                 </div>
+                <button class="btn-icon" id="btn-check-update" onclick="checkUpdate()" title="Check for updates">🔄</button>
                 <span id="connection-status" class="badge badge-disconnected" data-i18n="disconnected">⚡ Disconnected</span>
             </div>
         </header>

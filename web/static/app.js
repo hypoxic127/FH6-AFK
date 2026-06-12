@@ -659,6 +659,8 @@ let isRebooting = false;
 
 socket.on("version_info", (data) => {
     document.title = `FH6 AutoBot v${data.version} — Control Panel`;
+    const badge = document.getElementById("version-badge");
+    if (badge) badge.textContent = `v${data.version}`;
 });
 
 socket.on("update_available", (data) => {

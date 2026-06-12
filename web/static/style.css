@@ -1535,6 +1535,21 @@ html {
 }
 
 /* ==========================================
+   Version Badge
+   ========================================== */
+.version-badge {
+    font-size: 0.45em;
+    font-weight: 400;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================
    Auto-Update Banner
    ========================================== */
 .update-banner {

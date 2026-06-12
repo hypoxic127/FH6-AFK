@@ -52,6 +52,8 @@ a = Analysis(
         "engine.ocr",
         "engine.utils",
         "engine.runtime",
+        "engine.version",
+        "engine.updater",
         "engine.state_detect",
         "farm",
         "farm.skills",

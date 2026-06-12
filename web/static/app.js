@@ -651,3 +651,83 @@ document.getElementById("btn-autoscroll").classList.add("active");
     }
     tick();
 })();
+
+// ==========================================
+// Auto-Update System
+// ==========================================
+let isRebooting = false;
+
+socket.on("version_info", (data) => {
+    document.title = `FH6 AutoBot v${data.version} — Control Panel`;
+});
+
+socket.on("update_available", (data) => {
+    const banner = document.getElementById("update-banner");
+    const msg = document.getElementById("update-msg");
+    const link = document.getElementById("update-release-link");
+    const sizeMB = data.file_size ? ` (${(data.file_size / 1048576).toFixed(1)} MB)` : "";
+    msg.textContent = `🆕 v${data.version} available${sizeMB} (current: v${data.current})`;
+    if (data.release_url) {
+        link.href = data.release_url;
+        link.style.display = "";
+    } else {
+        link.style.display = "none";
+    }
+    banner.style.display = "flex";
+});
+
+socket.on("update_progress", (data) => {
+    const bar = document.getElementById("update-progress-bar");
+    const msg = document.getElementById("update-progress-msg");
+    if (data.total > 0) {
+        const pct = Math.round((data.downloaded / data.total) * 100);
+        bar.style.width = pct + "%";
+        const mbDone = (data.downloaded / 1048576).toFixed(1);
+        const mbTotal = (data.total / 1048576).toFixed(1);
+        msg.textContent = `⬇️ Downloading... ${mbDone} / ${mbTotal} MB (${pct}%)`;
+    }
+});
+
+socket.on("update_status", (data) => {
+    if (data.error) {
+        alert("❌ " + data.msg);
+        // Restore banner
+        document.getElementById("update-progress").style.display = "none";
+        document.getElementById("update-banner").style.display = "flex";
+        document.getElementById("update-btn").disabled = false;
+    }
+});
+
+socket.on("rebooting", () => {
+    isRebooting = true;
+    document.getElementById("update-progress").style.display = "none";
+    document.getElementById("update-banner").style.display = "none";
+    document.getElementById("rebooting-overlay").style.display = "flex";
+
+    // Poll for reconnection every 3 seconds
+    const pollReconnect = setInterval(() => {
+        fetch("/", { method: "HEAD" })
+            .then(() => {
+                clearInterval(pollReconnect);
+                window.location.reload();
+            })
+            .catch(() => {});
+    }, 3000);
+});
+
+// Override disconnect handler — don't show error if rebooting
+const origDisconnectHandler = socket.listeners("disconnect");
+socket.on("disconnect", () => {
+    if (isRebooting) return; // suppress disconnect error during reboot
+});
+
+function doUpdate() {
+    document.getElementById("update-banner").style.display = "none";
+    document.getElementById("update-progress").style.display = "flex";
+    document.getElementById("update-btn").disabled = true;
+    socket.emit("do_update");
+}
+
+function checkUpdate() {
+    socket.emit("check_update");
+}

@@ -71,13 +71,31 @@ def index() -> str:
 # ==========================================
 @_socketio.on("connect")
 def handle_connect() -> None:
-    """客户端连接时推送当前状态、最近日志和局域网地址。"""
+    """客户端连接时推送当前状态、最近日志、版本和更新信息。"""
     manager = get_state_manager()
     _socketio.emit("state_update", manager.get_state())
     if _lan_url:
         _socketio.emit("lan_url", {"url": _lan_url})
     for log_entry in manager.get_recent_logs():
         _socketio.emit("log", log_entry)
+
+    # 推送版本号和缓存的更新信息
+    from engine.version import __version__
+
+    _socketio.emit("version_info", {"version": __version__})
+    from engine.updater import get_cached_update_info
+
+    cached = get_cached_update_info()
+    if cached:
+        _socketio.emit(
+            "update_available",
+            {
+                "version": cached["version"],
+                "current": __version__,
+                "release_url": cached.get("release_url", ""),
+                "file_size": cached.get("file_size", 0),
+            },
+        )
 
 
 @_socketio.on("start_bot")
@@ -168,6 +186,47 @@ def handle_stop_bot() -> None:
 def handle_get_state() -> None:
     """客户端请求最新状态。"""
     _socketio.emit("state_update", get_state_manager().get_state())
+
+
+@_socketio.on("check_update")
+def handle_check_update() -> None:
+    """检查是否有新版本。"""
+    from engine.updater import check_for_update
+    from engine.version import __version__
+
+    info = check_for_update(force=True)
+    if info:
+        _socketio.emit(
+            "update_available",
+            {
+                "version": info["version"],
+                "current": __version__,
+                "release_url": info.get("release_url", ""),
+                "file_size": info.get("file_size", 0),
+            },
+        )
+    else:
+        _socketio.emit("update_status", {"msg": f"Already on latest version (v{__version__})"})
+
+
+@_socketio.on("do_update")
+def handle_do_update() -> None:
+    """执行一键更新：下载 → 替换 → 重启。"""
+    from engine.updater import execute_update
+
+    def _progress(downloaded: int, total: int) -> None:
+        _socketio.emit("update_progress", {"downloaded": downloaded, "total": total})
+
+    def _pre_reboot() -> None:
+        # 通知前端：即将重启，请显示"重启中"而非"断线"
+        _socketio.emit("rebooting", {"msg": "Update complete, restarting..."})
+        import time
+
+        time.sleep(0.5)  # 留时间给 WebSocket 发送完
+
+    result: str = execute_update(progress_cb=_progress, pre_reboot_cb=_pre_reboot)
+    if result:
+        _socketio.emit("update_status", {"msg": result, "error": True})
 
 
 # ==========================================

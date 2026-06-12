@@ -138,6 +138,18 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "  🚀 Launching Web UI",
         "zh": "  🚀 正在启动 Web UI",
     },
+    "checking_update": {
+        "en": "Checking for updates",
+        "zh": "正在检查更新",
+    },
+    "update_available": {
+        "en": "New version v{ver} available! (current: v{current})",
+        "zh": "发现新版本 v{ver}！(当前: v{current})",
+    },
+    "update_hint": {
+        "en": "Run with --update to apply, or update via Web UI.",
+        "zh": "使用 --update 参数更新，或在 Web UI 中一键更新。",
+    },
 }
 
 # Phase display names
@@ -288,7 +300,14 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable debug image output to debug/ folder",
     )
+    parser.add_argument("--update", action="store_true", help="Check and apply update, then exit")
+    parser.add_argument("--skip-update", action="store_true", help="Skip update check on startup")
     args = parser.parse_args()
+
+    # Cleanup old EXE from previous update
+    from engine.updater import cleanup_old_exe
+
+    cleanup_old_exe()
 
     # Enable debug file output if requested
     if args.debug:
@@ -304,6 +323,47 @@ if __name__ == "__main__":
     from engine.i18n import set_lang
 
     set_lang(lang)
+
+    # Step 1.5: Handle --update mode (download + replace + restart)
+    if args.update:
+        from engine.updater import execute_update
+        from engine.version import __version__
+
+        print(f"\n  🔍 {_t('checking_update', lang)} (current: v{__version__})...\n")
+
+        def _print_progress(downloaded: int, total: int) -> None:
+            if total > 0:
+                pct: int = int(downloaded / total * 100)
+                mb_done: float = downloaded / 1_048_576
+                mb_total: float = total / 1_048_576
+                print(f"\r  ⬇️  {mb_done:.1f} / {mb_total:.1f} MB ({pct}%)", end="", flush=True)
+
+        result: str = execute_update(progress_cb=_print_progress)
+        if result:
+            print(f"\n  ❌ {result}\n")
+        # If update succeeded, process already exited via sys.exit(0)
+        sys.exit(0)
+
+    # Step 1.6: Background update check (non-blocking, log-only)
+    if not args.skip_update:
+        from engine.updater import background_check
+        from engine.version import __version__
+
+        def _on_update_found(info: dict) -> None:
+            from colorama import Fore, Style
+
+            ver: str = info.get("version", "?")
+            url: str = info.get("release_url", "")
+            print(
+                f"\n  {Fore.CYAN}{Style.BRIGHT}🆕 "
+                f"{_t('update_available', lang).format(ver=ver, current=__version__)}"
+                f"{Style.RESET_ALL}"
+            )
+            print(f"     {_t('update_hint', lang)}")
+            if url:
+                print(f"     {url}\n")
+
+        background_check(on_update_found=_on_update_found)
 
     # Step 2: Mode selection (CLI flags take priority)
     if args.web:

@@ -1533,3 +1533,114 @@ html {
     background-clip: text;
     word-break: break-all;
 }
+
+/* ==========================================
+   Auto-Update Banner
+   ========================================== */
+.update-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(0, 229, 200, 0.12), rgba(61, 139, 255, 0.12));
+    border: 1px solid rgba(0, 229, 200, 0.3);
+    border-radius: 12px;
+    font-size: 0.9rem;
+    color: var(--neon-cyan);
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.update-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-update {
+    padding: 6px 16px;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-update:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(0, 229, 200, 0.4);
+}
+
+.btn-update:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-link {
+    color: var(--neon-blue);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.update-progress {
+    border-color: rgba(61, 139, 255, 0.3);
+}
+
+.progress-bar-wrap {
+    flex: 1;
+    min-width: 200px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.rebooting-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(7, 11, 26, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+}
+
+.rebooting-content {
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--neon-cyan);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

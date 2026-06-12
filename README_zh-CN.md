@@ -38,9 +38,11 @@
 | 🎮 **虚拟手柄控制** | ViGEmBus 模拟 Xbox 360 手柄，原生级输入兼容 |
 | 🖥️ **Web UI 仪表盘** | 毛玻璃风格界面 + 实时日志 + 手机扫码远程监控 |
 | ⏹️ **即时停止** | 线程注入技术，点击停止按钮后 Bot 立即终止 |
+| 🔄 **自动更新** | GitHub Releases 自动检测更新，Web UI 一键更新或 `--update` 命令行更新 |
+| 🛡️ **截图自愈** | BitBlt 失败自动恢复，MSS 实例重置 + 游戏窗口自动置前 |
 | 🎰 **超级轮盘计数** | 自动统计已执行的加点宏次数 |
 | 📦 **一键打包** | PyInstaller 单文件 `.exe`，无需 Python 环境 |
-| 🧪 **95 个测试用例** | Ruff 代码检查 + Pytest 测试覆盖，GitHub Actions CI |
+| 🧪 **93 个测试用例** | Ruff 代码检查 + Pytest 测试覆盖，GitHub Actions CI |
 
 ---
 
@@ -138,6 +140,21 @@ python main_bot.py --web --port 8080  # 自定义端口
 - ⚙️ **选择起始阶段** — 下拉选择从任意阶段开始
 - 📜 **实时日志终端** — 带语法高亮的日志流
 - 📱 **扫码远程监控** — 手机扫描 QR 码即可远程查看
+- 🆕 **自动更新** — 版本号徽章 + 检查更新按钮 + 一键下载更新（带进度条）
+
+### 🔄 自动更新
+
+Bot 启动时会在后台自动检查新版本并提示：
+
+```bash
+# 命令行手动更新
+FH6AutoBot.exe --update
+
+# 跳过更新检查（适用于开机自启等场景）
+FH6AutoBot.exe --skip-update --web
+```
+
+在 Web UI 中：点击右上角 🔄 按钮，或在新版本横幅出现时点击 **⬇️ 立即更新** 按钮。
 
 ### 💻 终端模式
 
@@ -178,6 +195,9 @@ FH6_AutoBot/
 │   ├── state_detect.py         #    游戏状态检测器（直方图 + OCR 混合）
 │   ├── event_bus.py            #    事件总线（日志/状态推送到 Web UI）
 │   ├── runtime.py              #    PyInstaller 运行时路径解析
+│   ├── version.py              #    应用版本号唯一来源
+│   ├── updater.py              #    GitHub Releases 自动更新引擎
+│   ├── i18n.py                 #    双语字符串表（中/英）
 │   └── utils.py                #    日志 / 窗口操作 / 手柄 / MSS 截图
 │
 ├── macro/                      # 🎮 宏操作层
@@ -204,7 +224,7 @@ FH6_AutoBot/
 │   ├── FH6AutoBot.spec         #    PyInstaller spec（--onefile）
 │   └── hook_utf8.py            #    运行时钩子（Windows UTF-8 修复）
 │
-├── tests/                      # 🧪 单元测试（95 个用例）
+├── tests/                      # 🧪 单元测试（93 个用例）
 ├── tools/                      # 🔧 开发调试工具（不打包）
 │
 ├── .github/workflows/
@@ -235,8 +255,8 @@ python -m ruff format --check .
 | CI 任务 | 触发条件 | 描述 |
 |:--------|:---------|:-----|
 | **Lint** | Push / PR | Ruff 代码检查 + 格式校验 |
-| **Test** | Push / PR | 95 个测试用例（ubuntu-latest） |
-| **Release** | `v*` tag | PyInstaller 构建 → GitHub Release 发布 |
+| **Test** | Push / PR | 93 个测试用例（ubuntu-latest） |
+| **Release** | `v*` tag | PyInstaller 构建 → GitHub Release 发布（自动同步版本号） |
 
 ---
 
@@ -261,9 +281,24 @@ python -m ruff format --check .
 
 ### 📦 构建与打包
 
-- **PyInstaller --onefile** — 单文件 ~44MB 可执行程序
+- **PyInstaller --onefile** — 单文件 ~50MB 可执行程序
 - **运行时路径层** — `engine/runtime.py` 统一路径解析（开发/打包双模式）
 - **UTF-8 控制台修复** — `hook_utf8.py` 解决 Windows 中文日志乱码
+
+### 🔄 自动更新系统
+
+- **整数元组版本比较** — `(1,5,10) > (1,5,9)`，避免字符串比对漏洞
+- **事务性文件替换** — 失败时自动回滚（永不损坏用户安装）
+- **多镜像下载** — 直连 GitHub → ghproxy 代理链（3 个镜像）
+- **防无限重启** — 重启前过滤 `--update` 参数
+- **API 限流保护** — 1 小时检查缓存，不触发 GitHub 60 次/小时限制
+- **全局更新锁** — 防止 Web UI + CLI 并发下载
+
+### 🛡️ 截图自愈机制
+
+- **BitBlt 失败恢复** — GDI 设备上下文损坏时自动重置 MSS 实例
+- **窗口自动置前** — 截图失败后将游戏窗口拉回前台
+- **Web UI 停止/启动安全** — 停止 Bot 时重置 MSS，防止句柄泄漏
 
 ---
 

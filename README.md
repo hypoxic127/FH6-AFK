@@ -38,9 +38,11 @@
 | 🎮 **Virtual Gamepad** | ViGEmBus simulates Xbox 360 controller, native-level input |
 | 🖥️ **Web UI Dashboard** | Glassmorphism UI + real-time logs + QR code mobile monitoring |
 | ⏹️ **Instant Stop** | Thread injection technology, bot stops immediately on button click |
+| 🔄 **Auto-Update** | GitHub Releases auto-update with multi-mirror download, one-click update via Web UI or `--update` flag |
+| 🛡️ **Self-Healing Capture** | BitBlt failure auto-recovery with MSS reset + window re-foreground |
 | 🎰 **Super Wheelspin Counter** | Automatically tracks upgrade macro executions |
 | 📦 **One-Click Build** | PyInstaller single-file `.exe`, no Python required |
-| 🧪 **95 Test Cases** | Ruff linting + Pytest coverage, GitHub Actions CI |
+| 🧪 **93 Test Cases** | Ruff linting + Pytest coverage, GitHub Actions CI |
 
 ---
 
@@ -48,7 +50,7 @@
 
 ```
     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-    │  🏎️ Farm     │────▶│  🛒 Buy      │────▶│  ⚡ Upgrade  │────▶│  🗑️ Sell     │
+    │  🏎️ Farm    │────▶│  🛒 Buy    │────▶│  ⚡ Upgrade  │────▶│  🗑️ Sell │
     │ Skill Points│     │    Cars     │     │    Cars     │     │    Cars     │
     └──────┬──────┘     └─────────────┘     └─────────────┘     └──────┬──────┘
            │                                                           │
@@ -138,6 +140,21 @@ Open `http://localhost:6800` in your browser to access the control panel:
 - ⚙️ **Stage Selector** — Start from any stage via dropdown
 - 📜 **Live Log Terminal** — Syntax-highlighted real-time log stream
 - 📱 **QR Remote Monitoring** — Scan QR code to monitor from your phone
+- 🆕 **Auto-Update** — Version badge + check for updates button + one-click update with progress bar
+
+### 🔄 Auto-Update
+
+The bot automatically checks for new releases on startup and notifies you:
+
+```bash
+# Manual update via CLI
+FH6AutoBot.exe --update
+
+# Skip update check (e.g. for autostart scenarios)
+FH6AutoBot.exe --skip-update --web
+```
+
+In Web UI: click the 🔄 button in the header, or use the **⬇️ Update Now** button when a new version banner appears.
 
 ### 💻 Terminal Mode
 
@@ -178,6 +195,9 @@ FH6_AutoBot/
 │   ├── state_detect.py         #    Game state detector (histogram + OCR hybrid)
 │   ├── event_bus.py            #    Event bus (log/state push to Web UI)
 │   ├── runtime.py              #    PyInstaller runtime path resolution
+│   ├── version.py              #    Single source of truth for app version
+│   ├── updater.py              #    GitHub Releases auto-update engine
+│   ├── i18n.py                 #    Bilingual string table (en/zh)
 │   └── utils.py                #    Logging / window ops / gamepad / MSS capture
 │
 ├── macro/                      # 🎮 Macro Operations
@@ -204,7 +224,7 @@ FH6_AutoBot/
 │   ├── FH6AutoBot.spec         #    PyInstaller spec (--onefile)
 │   └── hook_utf8.py            #    Runtime hook (Windows UTF-8 fix)
 │
-├── tests/                      # 🧪 Unit Tests (95 cases)
+├── tests/                      # 🧪 Unit Tests (93 cases)
 ├── tools/                      # 🔧 Dev utilities (not packaged)
 │
 ├── .github/workflows/
@@ -235,8 +255,8 @@ python -m ruff format --check .
 | CI Job | Trigger | Description |
 |:-------|:--------|:------------|
 | **Lint** | Push / PR | Ruff lint + format validation |
-| **Test** | Push / PR | 95 test cases (ubuntu-latest) |
-| **Release** | `v*` tag | PyInstaller build → GitHub Release |
+| **Test** | Push / PR | 93 test cases (ubuntu-latest) |
+| **Release** | `v*` tag | PyInstaller build → GitHub Release (auto-sync version) |
 
 ---
 
@@ -261,9 +281,24 @@ python -m ruff format --check .
 
 ### 📦 Build & Packaging
 
-- **PyInstaller --onefile** — Single ~44MB executable
+- **PyInstaller --onefile** — Single ~50MB executable
 - **Runtime Path Layer** — `engine/runtime.py` unified path resolution (dev/packaged dual-mode)
 - **UTF-8 Console Fix** — `hook_utf8.py` resolves Chinese log garbling on Windows
+
+### 🔄 Auto-Update System
+
+- **Integer Tuple Version Comparison** — `(1,5,10) > (1,5,9)`, no string comparison bugs
+- **Transactional File Replacement** — Rollback on failure (never bricks the installation)
+- **Multi-Mirror Download** — Direct GitHub → ghproxy fallback chain (3 mirrors)
+- **Infinite Restart Prevention** — Filters `--update` from `sys.argv` before restarting
+- **Rate Limit Protection** — 1-hour API cache, respects GitHub's 60 req/hr limit
+- **Global Update Lock** — Prevents concurrent downloads from Web UI + CLI
+
+### 🛡️ Self-Healing Screenshot
+
+- **BitBlt Failure Recovery** — Auto-resets MSS instance when GDI device context is corrupted
+- **Window Re-Foreground** — Pulls game window back to front after capture failure
+- **Web UI Stop/Start Safe** — MSS reset on bot stop prevents stale handle leaks
 
 ---
 

@@ -289,6 +289,13 @@ def show_start_menu(lang: str = "en"):
 
 if __name__ == "__main__":
     import argparse
+    import sys
+
+    # Force UTF-8 stdout/stderr (prevents colorama cp1252 crash on emoji)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     parser = argparse.ArgumentParser(description="FH6 AutoBot — Full AFK Automation Tool")
     parser.add_argument("--web", action="store_true", help="Launch Web UI directly")
@@ -350,18 +357,15 @@ if __name__ == "__main__":
         from engine.version import __version__
 
         def _on_update_found(info: dict) -> None:
-            from colorama import Fore, Style
-
             ver: str = info.get("version", "?")
             url: str = info.get("release_url", "")
-            print(
-                f"\n  {Fore.CYAN}{Style.BRIGHT}🆕 "
-                f"{_t('update_available', lang).format(ver=ver, current=__version__)}"
-                f"{Style.RESET_ALL}"
-            )
-            print(f"     {_t('update_hint', lang)}")
-            if url:
-                print(f"     {url}\n")
+            try:
+                print(f"\n  \u2728 {_t('update_available', lang).format(ver=ver, current=__version__)}")
+                print(f"     {_t('update_hint', lang)}")
+                if url:
+                    print(f"     {url}\n")
+            except UnicodeEncodeError:
+                print(f"\n  [UPDATE] New version v{ver} available (current: v{__version__})")
 
         background_check(on_update_found=_on_update_found)
 

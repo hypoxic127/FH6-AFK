@@ -58,6 +58,50 @@ def get_data_dir() -> str:
     return data_dir
 
 
+_DEFAULT_BOT_CONFIG: dict[str, int] = {
+    "points_per_match": 10,
+    "target_points": 999,
+}
+
+
+def load_bot_config() -> dict[str, int]:
+    """加载用户 Bot 配置 (data/bot_config.json)。
+
+    文件不存在或损坏时返回默认值。用于支持不同蓝图的单局点数自定义。
+
+    Returns:
+        包含 points_per_match 和 target_points 的配置字典
+    """
+    config_path = os.path.join(get_data_dir(), "bot_config.json")
+    if not os.path.exists(config_path):
+        return dict(_DEFAULT_BOT_CONFIG)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            import json
+
+            user_cfg = json.load(f)
+        merged = dict(_DEFAULT_BOT_CONFIG)
+        merged.update(user_cfg)
+        return merged
+    except (IOError, ValueError):
+        return dict(_DEFAULT_BOT_CONFIG)
+
+
+def save_bot_config(config: dict[str, int]) -> None:
+    """保存用户 Bot 配置到 data/bot_config.json。
+
+    Args:
+        config: 包含 points_per_match 和/或 target_points 的配置字典
+    """
+    import json
+
+    config_path = os.path.join(get_data_dir(), "bot_config.json")
+    merged = dict(_DEFAULT_BOT_CONFIG)
+    merged.update(config)
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(merged, f, indent=2, ensure_ascii=False)
+
+
 def is_frozen() -> bool:
     """判断是否在 PyInstaller 打包环境中运行。
 

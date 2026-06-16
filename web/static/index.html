@@ -180,6 +180,18 @@
                         </div>
                     </div>
 
+                    <!-- Blueprint Config -->
+                    <div class="control-row config-row">
+                        <div class="control-group config-input-group">
+                            <label data-i18n="pointsPerMatch">📊 Points / Match</label>
+                            <input type="number" id="points-per-match" class="config-input" min="1" max="999" value="10">
+                        </div>
+                        <div class="control-group config-input-group">
+                            <label data-i18n="targetPoints">🎯 Target Points</label>
+                            <input type="number" id="target-points" class="config-input" min="1" max="999" value="999">
+                        </div>
+                    </div>
+
                     <!-- Buttons -->
                     <div class="control-buttons">
                         <button id="btn-start" class="btn btn-start" onclick="startBot()">

@@ -936,6 +936,47 @@ html {
     box-shadow: 0 0 8px var(--glow-pink);
 }
 
+/* --- Config Inputs (蓝图配置) --- */
+.config-row {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.config-input-group {
+    flex: 1;
+    min-width: 120px;
+}
+
+.config-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(8, 12, 24, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    transition: all var(--transition);
+    -moz-appearance: textfield;
+}
+
+.config-input::-webkit-inner-spin-button,
+.config-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.config-input:focus {
+    outline: none;
+    border-color: rgba(0, 229, 200, 0.4);
+    box-shadow: 0 0 12px rgba(0, 229, 200, 0.1), inset 0 0 8px rgba(0, 229, 200, 0.03);
+}
+
+.config-input:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
 /* --- Buttons --- */
 .control-buttons {
     display: flex;

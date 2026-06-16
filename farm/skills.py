@@ -57,9 +57,16 @@ from engine.utils import (
 
 
 def get_matches_needed(current_points: int) -> int:
-    """根据当前技能点计算还需要跑多少场比赛。每场约 10 点，目标 999。"""
-    max_points = 999
-    points_per_match = 10
+    """根据当前技能点和用户配置计算还需要跑多少场比赛。
+
+    从 data/bot_config.json 读取 points_per_match（单局点数）和
+    target_points（目标点数），支持不同蓝图的自定义。
+    """
+    from engine.runtime import load_bot_config
+
+    config = load_bot_config()
+    max_points = config["target_points"]
+    points_per_match = max(1, config["points_per_match"])  # 防止除零
     matches_needed = math.ceil((max_points - current_points) / points_per_match)
     return 0 if matches_needed < 0 else matches_needed
 

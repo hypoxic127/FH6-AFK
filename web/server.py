@@ -97,6 +97,31 @@ def handle_connect() -> None:
             },
         )
 
+    # 推送 Bot 配置（单局点数等）
+    from engine.runtime import load_bot_config
+
+    _socketio.emit("bot_config", load_bot_config())
+
+
+@_socketio.on("get_bot_config")
+def handle_get_bot_config() -> None:
+    """客户端请求当前 Bot 配置。"""
+    from engine.runtime import load_bot_config
+
+    _socketio.emit("bot_config", load_bot_config())
+
+
+@_socketio.on("save_bot_config")
+def handle_save_bot_config(data: dict[str, int] | None = None) -> None:
+    """保存 Bot 配置（单局点数/目标点数）。"""
+    if not data:
+        return
+    from engine.runtime import save_bot_config
+
+    save_bot_config(data)
+    _socketio.emit("bot_config", data)
+    get_bus().emit("log", {"level": "info", "msg": f"Bot config updated: {data}"})
+
 
 @_socketio.on("start_bot")
 def handle_start_bot(data: dict[str, Any] | None = None) -> None:

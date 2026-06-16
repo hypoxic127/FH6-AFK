@@ -95,6 +95,8 @@ const I18N = {
         optSell: "🗑️ Sell Cars",
         autoLoop: "Auto Loop (4-stage cycle)",
         skipBuy: "Skip Buy Stage",
+        pointsPerMatch: "\ud83d\udcca Points / Match",
+        targetPoints: "\ud83c\udfaf Target Points",
         btnStart: "▶ Start Bot",
         btnStop: "⏹ Stop Bot",
         btnClear: "🗑 Clear Logs",
@@ -132,6 +134,8 @@ const I18N = {
         optSell: "🗑️ 卖车",
         autoLoop: "自动循环（四阶段闭环）",
         skipBuy: "跳过买车阶段",
+        pointsPerMatch: "\ud83d\udcca 单局点数",
+        targetPoints: "\ud83c\udfaf 目标点数",
         btnStart: "▶ 启动",
         btnStop: "⏹ 停止",
         btnClear: "🗑 清空日志",
@@ -263,6 +267,16 @@ socket.on("state_update", (data) => {
 
     updateStageProgress(data.current_state);
 
+});
+
+// Bot Config (单局点数/目标点数)
+socket.on("bot_config", (data) => {
+    if (data.points_per_match !== undefined) {
+        document.getElementById("points-per-match").value = data.points_per_match;
+    }
+    if (data.target_points !== undefined) {
+        document.getElementById("target-points").value = data.target_points;
+    }
 });
 
 socket.on("bot_status", (data) => {
@@ -597,6 +611,8 @@ function savePrefs() {
         stage: document.getElementById("stage-select").value,
         autoLoop: document.getElementById("auto-loop").checked,
         skipBuy: document.getElementById("skip-buy").checked,
+        pointsPerMatch: parseInt(document.getElementById("points-per-match").value) || 10,
+        targetPoints: parseInt(document.getElementById("target-points").value) || 999,
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }
@@ -616,6 +632,12 @@ function restorePrefs() {
         if (prefs.skipBuy !== undefined) {
             document.getElementById("skip-buy").checked = prefs.skipBuy;
         }
+        if (prefs.pointsPerMatch !== undefined) {
+            document.getElementById("points-per-match").value = prefs.pointsPerMatch;
+        }
+        if (prefs.targetPoints !== undefined) {
+            document.getElementById("target-points").value = prefs.targetPoints;
+        }
     } catch (_) {
         // ignore corrupt data
     }
@@ -625,6 +647,20 @@ function restorePrefs() {
 document.getElementById("stage-select").addEventListener("change", savePrefs);
 document.getElementById("auto-loop").addEventListener("change", savePrefs);
 document.getElementById("skip-buy").addEventListener("change", savePrefs);
+
+// Config inputs — save to server on change (debounced)
+let configSaveTimer = null;
+function onConfigChange() {
+    savePrefs();
+    clearTimeout(configSaveTimer);
+    configSaveTimer = setTimeout(() => {
+        const ppm = parseInt(document.getElementById("points-per-match").value) || 10;
+        const tp = parseInt(document.getElementById("target-points").value) || 999;
+        socket.emit("save_bot_config", { points_per_match: ppm, target_points: tp });
+    }, 500);
+}
+document.getElementById("points-per-match").addEventListener("input", onConfigChange);
+document.getElementById("target-points").addEventListener("input", onConfigChange);
 
 // ==========================================
 // 初始化

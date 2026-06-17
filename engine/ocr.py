@@ -203,8 +203,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
     # 注意：三位数字（如 712）比两位数更宽，右边界必须留足余量
     crop_y1 = int(h * 0.72)
     crop_y2 = int(h * 0.77)
-    crop_x1 = int(w * 0.27)
-    crop_x2 = int(w * 0.34)
+    crop_x1 = int(w * 0.275)
+    crop_x2 = int(w * 0.33)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
     if roi.size == 0:
@@ -218,60 +218,88 @@ def read_skill_points(img: np.ndarray) -> int | None:
         except OSError as e:
             log_warning(t("ocr.debug_write_fail", path="skill_points_roi.png", err=e))
 
-    # 图像预处理：蓝底黑字 → 灰度 → Otsu 阈值 → 反转为黑字白底
+    # 图像预处理：生成多种二值化变体，提高不同光照/对比度下的识别率
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    # --- 变体 A: Otsu 自适应阈值（对全局亮度变化鲁棒） ---
+    _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     # Tesseract 识别黑字白底效果最佳，确保数字为黑色、背景为白色
     # 检测当前极性：如果边缘像素多为黑色，说明背景是黑色，需要反转
-    border_mean = (thresh[0, :].mean() + thresh[-1, :].mean() + thresh[:, 0].mean() + thresh[:, -1].mean()) / 4
+    border_mean = (
+        thresh_otsu[0, :].mean() + thresh_otsu[-1, :].mean() + thresh_otsu[:, 0].mean() + thresh_otsu[:, -1].mean()
+    ) / 4
     if border_mean < 128:
-        # 白字黑底 → 反转为黑字白底
-        thresh = cv2.bitwise_not(thresh)
+        thresh_otsu = cv2.bitwise_not(thresh_otsu)
 
-    # 加大边距（40px 白色）+ 放大 4 倍（提升 Tesseract 小字识别率）
-    # 注意：必须使用 INTER_LINEAR，INTER_CUBIC 在 4x 时会导致字形失真，Tesseract 漏读首位数字
-    padded = cv2.copyMakeBorder(thresh, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
-    upscaled = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
+    # --- 变体 B: 自适应高斯阈值（对局部阴影/渐变鲁棒） ---
+    thresh_adapt = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 5)
+    border_mean_b = (
+        thresh_adapt[0, :].mean() + thresh_adapt[-1, :].mean() + thresh_adapt[:, 0].mean() + thresh_adapt[:, -1].mean()
+    ) / 4
+    if border_mean_b < 128:
+        thresh_adapt = cv2.bitwise_not(thresh_adapt)
+
+    # 对每种变体：加大边距（40px 白色）+ 放大 4 倍
+    # 注意：必须使用 INTER_LINEAR，INTER_CUBIC 在 4x 时会导致字形失真
+    preprocessed: list[tuple[str, np.ndarray]] = []
+    for label, thresh_img in [("otsu", thresh_otsu), ("adaptive", thresh_adapt)]:
+        padded = cv2.copyMakeBorder(thresh_img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+        upscaled = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
+        preprocessed.append((label, upscaled))
 
     # 可选：保存预处理后图片（便于排查）
     if DEBUG_WRITE_FILES:
         try:
             os.makedirs("debug", exist_ok=True)
-            cv2.imwrite("debug/skill_points_processed.png", upscaled)
+            for label, up_img in preprocessed:
+                cv2.imwrite(f"debug/skill_points_{label}.png", up_img)
         except OSError as e:
-            log_warning(t("ocr.debug_write_fail", path="skill_points_processed.png", err=e))
+            log_warning(t("ocr.debug_write_fail", path="skill_points_*.png", err=e))
 
-    # ===== OCR 识别（PSM 6 + PSM 7 双模式，取位数最多的结果） =====
-    # PSM 6（自动分割）在各种缩放/边距组合下表现最稳定。
-    # PSM 7（单行模式）作为备选。取位数最多的结果（漏读比幻读更常见）。
-    best_val: int | None = None
-    for psm in (6, 7):
-        config = f"--psm {psm} -c tessedit_char_whitelist=0123456789"
-        try:
-            text = pytesseract.image_to_string(upscaled, config=config).strip()
-            if text.isdigit():
-                val = int(text)
-                safe_print(f"{Fore.CYAN}{t('ocr.psm_result', psm=psm, val=val)}{Style.RESET_ALL}")
-                if best_val is None or len(text) > len(str(best_val)):
-                    best_val = val
-        except pytesseract.TesseractError as e:
-            log_warning(t("ocr.psm_error", psm=psm, err=e))
+    # ===== OCR 多策略投票 =====
+    # 2 种预处理 × 4 种 PSM 模式 = 8 轮识别，取位数最长且出现最多的结果
+    # PSM 6 = 自动分割, 7 = 单行, 8 = 单词, 13 = 原始行
+    candidates: list[int] = []
+    for label, up_img in preprocessed:
+        for psm in (6, 7, 8, 13):
+            config = f"--psm {psm} -c tessedit_char_whitelist=0123456789"
+            try:
+                text = pytesseract.image_to_string(up_img, config=config).strip()
+                if text.isdigit():
+                    val = int(text)
+                    candidates.append(val)
+                    safe_print(f"{Fore.CYAN}   [OCR] {label}/PSM{psm} → {val}{Style.RESET_ALL}")
+            except pytesseract.TesseractError as e:
+                log_warning(t("ocr.psm_error", psm=psm, err=e))
 
-    if best_val is not None and best_val > 0:
-        safe_print(f"{Fore.GREEN}{t('ocr.final_result', val=best_val)}{Style.RESET_ALL}")
-        return best_val
+    if candidates:
+        # 策略：先按位数降序分组，取位数最长的一组；组内取出现次数最多的值
+        max_digits = max(len(str(v)) for v in candidates)
+        longest_group = [v for v in candidates if len(str(v)) == max_digits]
+        # 计数投票
+        from collections import Counter
+
+        vote = Counter(longest_group)
+        best_val, count = vote.most_common(1)[0]
+        safe_print(
+            f"{Fore.GREEN}{t('ocr.final_result', val=best_val)} (votes: {count}/{len(candidates)}){Style.RESET_ALL}"
+        )
+        if best_val > 0:
+            return best_val
 
     # ===== 零技能点保底机制 =====
     # 当数字白名单 OCR 未检测到任何数字时，执行无限制 OCR 扫描。
     # 如果识别文本包含 "no", "avail", "point"（对应 "No Skill Points Available" 界面文字），
     # 或者文本为空，则可确信当前技能点为 0，应该开始刷图。
-    try:
-        raw_text = pytesseract.image_to_string(upscaled).strip().lower()
-        if not raw_text or "no" in raw_text or "avail" in raw_text or "point" in raw_text:
-            log_success(t("ocr.zero_detect", text=raw_text))
-            return 0
-    except pytesseract.TesseractError as e:
-        log_warning(t("ocr.zero_detect_error", err=e))
+    fallback_img = preprocessed[0][1] if preprocessed else None
+    if fallback_img is not None:
+        try:
+            raw_text = pytesseract.image_to_string(fallback_img).strip().lower()
+            if not raw_text or "no" in raw_text or "avail" in raw_text or "point" in raw_text:
+                log_success(t("ocr.zero_detect", text=raw_text))
+                return 0
+        except pytesseract.TesseractError as e:
+            log_warning(t("ocr.zero_detect_error", err=e))
 
     return None
 

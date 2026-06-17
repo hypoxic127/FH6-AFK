@@ -239,35 +239,14 @@ def run_master_bot_loop(
                     log_state_header(STATE_TRASH_CARS, t("loop.trash_desc"))
                     removed_count = _scan_and_delete_cars(hwnd, gamepad)
                     log_success(t("loop.trash_done", count=removed_count))
-
-                    # === 关键：删车后重新选中 S2 主力车并上车 ===
-                    # 删车后游戏光标会停在随机剩余车上（如 2008 WRX STI），
-                    # 如果不重新选车，下一轮 Farm 会用错误车辆跑图导致点数极低。
-                    log_info(t("loop.reselect_main"))
-                    found, _, _ = navigate_to_main_car(hwnd, gamepad)
-                    if found:
-                        log_success(t("loop.reselect_ok"))
-                        # navigate_to_main_car 已按 A 进入详情页
-                        # 等待详情页渲染后选择 "Get In Car"
-                        if _wait_for_designs_and_paints(hwnd):
-                            time.sleep(1.0)
-                            log_info(t("loop.get_in_car"))
-                            # 详情页首选项就是 "Get In Car"，直接按 A
-                            _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=3.0)
-                            log_success(t("loop.got_in_car"))
-                        else:
-                            log_warning(t("loop.detail_timeout"))
-                            # 回退：按 A 尝试上车
-                            _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=3.0)
-                    else:
-                        log_warning(t("loop.reselect_fail"))
-                        # 回退：按 B 退出当前状态
-                        _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
-
+                    # B × 2 退出车库
+                    log_info(t("general.b_x", n=2))
+                    _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
+                    _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
                     # 等待回到自由漫游画面后再按菜单键
                     if _wait_for_anna_link(hwnd):
                         log_info(t("loop.menu_confirmed"))
-                        time.sleep(2.0)
+                        time.sleep(2.0)  # 等待自由漫游画面完全就绪
                         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=2.0)
                     else:
                         log_warning(t("loop.menu_fallback"))

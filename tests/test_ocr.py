@@ -35,6 +35,7 @@ from engine.ocr import (
     # 函数
     has_green_selection_border,
     is_empty_slot,
+    match_impreza_22b,
 )
 
 # ==========================================
@@ -89,14 +90,21 @@ class TestImprezaKeywords:
     def test_typical_ocr_text_matches(self) -> None:
         """模拟 OCR 输出，验证匹配逻辑。"""
         ocr_text = "1998 subaru impreza 22b-sti version"
-        matched = [kw for kw in IMPREZA_22B_KEYWORDS if kw in ocr_text]
-        assert len(matched) >= IMPREZA_22B_MIN_MATCH
+        is_match, matched = match_impreza_22b(ocr_text)
+        assert is_match
+        assert len(matched) >= 2
 
     def test_non_target_car_fails(self) -> None:
-        """非目标车辆文字不应命中足够关键词。"""
+        """非目标车辆文字不应命中。"""
         ocr_text = "2024 subaru brz premium"
-        matched = [kw for kw in IMPREZA_22B_KEYWORDS if kw in ocr_text]
-        assert len(matched) < IMPREZA_22B_MIN_MATCH
+        is_match, _ = match_impreza_22b(ocr_text)
+        assert not is_match
+
+    def test_wrx_sti_excluded(self) -> None:
+        """2008 Subaru IMPREZA WRX STI 不应通过匹配（缺少 '22b'）。"""
+        ocr_text = "2008 subaru impreza wrx sti"
+        is_match, matched = match_impreza_22b(ocr_text)
+        assert not is_match, f"WRX STI should NOT match but got matched={matched}"
 
 
 # ==========================================

@@ -322,8 +322,8 @@ def _scan_and_delete_cars(hwnd, gamepad):
             _y2 = min(resized.shape[0], cy + crop_h // 2)
             card_roi = resized[_y1:_y2, _x1:_x2]
             card_text = module_ocr._ocr_card_text(card_roi, debug_label="DELETE")
-            matched = [kw for kw in module_ocr.IMPREZA_22B_KEYWORDS if kw in card_text]
-            if len(matched) >= module_ocr.IMPREZA_22B_MIN_MATCH:
+            is_match, matched = module_ocr.match_impreza_22b(card_text)
+            if is_match:
                 log_success(t("garage.card_confirmed", n=len(matched), matched=matched))
             else:
                 log_warning(t("garage.card_mismatch", n=len(matched), matched=matched, text=card_text[:50]))
@@ -568,11 +568,10 @@ def navigate_to_main_car(hwnd, gamepad):
                     _y2 = min(resized.shape[0], cy + crop_h // 2)
                     card_roi = resized[_y1:_y2, _x1:_x2]
                     card_text = module_ocr._ocr_card_text(card_roi, debug_label="MAIN_CAR")
-                    # 多关键词匹配（使用全局常量）
-                    matched = [kw for kw in module_ocr.IMPREZA_22B_KEYWORDS if kw in card_text]
-                    if len(matched) >= module_ocr.IMPREZA_22B_MIN_MATCH:
+                    # 使用 required+optional 匹配（排除 2008 WRX STI）
+                    is_target_car, matched = module_ocr.match_impreza_22b(card_text)
+                    if is_target_car:
                         log_success(t("garage.card_confirmed", n=len(matched), matched=matched))
-                        is_target_car = True
                     else:
                         log_warning(
                             t(

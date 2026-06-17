@@ -77,17 +77,42 @@ CARD_CROP_H = 217  # 卡片裁剪高度（像素）— 与实际高亮边框匹�
 # 目标车辆识别关键词（全局唯一真相源）
 # ==========================================
 # 1998 Subaru Impreza 22B-STI Version 的独特特征关键词
-# "preza" 而非 "impreza"：CARD_CROP 左边缘裁切导致 OCR 读成 "apreza"/"vipreza"
-# "22b" 始终稳定命中
-# "1998" OCR 常误读为 "1905"/"1945"，改用 "sti" 作为第三标识
-IMPREZA_22B_KEYWORDS: list[str] = ["preza", "22b", "sti"]
-IMPREZA_22B_MIN_MATCH: int = 2  # 至少命中 2/3 个才算确认
+# --- 1998 Impreza 22B-STI 识别关键词 ---
+# "22b" 是区分 22B-STI 与 2008 WRX STI 的唯一可靠标识，必须命中
+# "preza"/"sti" 作为辅助确认（至少命中 1 个）
+IMPREZA_22B_REQUIRED: list[str] = ["22b"]  # 必须全部命中
+IMPREZA_22B_OPTIONAL: list[str] = ["preza", "sti"]  # 至少命中 1 个
+# 向后兼容：保留原常量供 test 使用
+IMPREZA_22B_KEYWORDS: list[str] = IMPREZA_22B_REQUIRED + IMPREZA_22B_OPTIONAL
+IMPREZA_22B_MIN_MATCH: int = 2  # 向后兼容（但实际匹配逻辑已改用 REQUIRED+OPTIONAL）
 
 # ==========================================
 # 空位检测阈值
 # ==========================================
 EMPTY_SLOT_BRIGHTNESS_THRESHOLD: float = 50.0  # 亮度 ≤ 此值视为暗区
 EMPTY_SLOT_VARIANCE_THRESHOLD: float = 5.0  # 方差 ≤ 此值视为纯色
+
+
+def match_impreza_22b(text: str) -> tuple[bool, list[str]]:
+    """检查文本是否匹配 1998 Impreza 22B-STI（排除 2008 WRX STI 等同品牌车型）。
+
+    匹配规则：
+    1. REQUIRED 列表中的关键词必须**全部**命中（"22b" 是唯一区分标识）
+    2. OPTIONAL 列表中的关键词至少命中 **1 个**（"preza" / "sti"）
+
+    Args:
+        text: OCR 识别出的卡片文本（已 lower()）
+
+    Returns:
+        (is_match, matched_keywords) 元组
+    """
+    text_lower = text.lower()
+    req_matched = [kw for kw in IMPREZA_22B_REQUIRED if kw in text_lower]
+    opt_matched = [kw for kw in IMPREZA_22B_OPTIONAL if kw in text_lower]
+    all_matched = req_matched + opt_matched
+
+    is_match = (len(req_matched) == len(IMPREZA_22B_REQUIRED)) and (len(opt_matched) >= 1)
+    return is_match, all_matched
 
 
 # ==========================================
@@ -726,9 +751,8 @@ def verify_new_target_car(
 
         text = pytesseract.image_to_string(upscaled).strip().lower()
 
-        # 目标车特征关键词匹配（使用全局常量）
-        matched_kws = [kw for kw in IMPREZA_22B_KEYWORDS if kw in text]
-        has_keyword = len(matched_kws) >= IMPREZA_22B_MIN_MATCH
+        # 目标车特征关键词匹配（使用 required+optional 逻辑排除 WRX STI）
+        has_keyword, matched_kws = match_impreza_22b(text)
 
         if has_keyword:
             safe_print(f"{Fore.GREEN}{t('ocr.keyword_hit', n=len(matched_kws), kws=matched_kws)}{Style.RESET_ALL}")

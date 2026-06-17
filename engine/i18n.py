@@ -735,6 +735,30 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "  ⚠️ Free roam not detected, still pressing menu key...",
         "zh": "  ⚠️ 未检测到自由漫游，仍然尝试按菜单键...",
     },
+    "loop.reselect_main": {
+        "en": "  [Post-Sell] Navigating to S2 main car to avoid driving wrong car in next farm...",
+        "zh": "  [删车后] 正在导航到 S2 主力车，避免下一轮跑图使用错误车辆...",
+    },
+    "loop.reselect_ok": {
+        "en": "  ✅ S2 main car (1998 Impreza 22B-STI) found! Getting in...",
+        "zh": "  ✅ 已找到 S2 主力车 (1998 Impreza 22B-STI)！正在上车...",
+    },
+    "loop.reselect_fail": {
+        "en": "  ⚠️ Could not find S2 main car after sell, continuing with current car...",
+        "zh": "  ⚠️ 删车后未找到 S2 主力车，继续使用当前车辆...",
+    },
+    "loop.get_in_car": {
+        "en": "  -> Selecting 'Get In Car' from detail page...",
+        "zh": "  -> 在详情页选择「驾驶此车」...",
+    },
+    "loop.got_in_car": {
+        "en": "  ✅ Now driving the correct main car!",
+        "zh": "  ✅ 已切换到正确的主力车！",
+    },
+    "loop.detail_timeout": {
+        "en": "  ⚠️ Detail page not detected, pressing A to try getting in...",
+        "zh": "  ⚠️ 未检测到详情页，尝试按 A 上车...",
+    },
     "loop.farm_launching": {
         "en": "Launching visual navigation & auto-farm module to earn skill points in EventLab...",
         "zh": "主控程序正在启动视觉导航与自动跑图模块，进入 EventLab 赚取技能点...",

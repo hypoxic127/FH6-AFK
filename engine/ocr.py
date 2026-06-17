@@ -199,11 +199,11 @@ def read_skill_points(img: np.ndarray) -> int | None:
     h, w, _ = img.shape
 
     # 技能点数字位于暂停菜单 Car Mastery 区域下方（蓝底黑字）
-    # 手动标注确认：h: 72%-77%, w: 27%-34%
-    # 注意：三位数字（如 712）比两位数更宽，右边界必须留足余量
+    # 左边界 28.5%：避开 27%-28% 处的 UI 分隔竖线（会干扰 Tesseract 误读 1→4）
+    # 右边界 33%：三位数字（如 712/999）需要足够宽度
     crop_y1 = int(h * 0.72)
     crop_y2 = int(h * 0.77)
-    crop_x1 = int(w * 0.275)
+    crop_x1 = int(w * 0.285)
     crop_x2 = int(w * 0.33)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
@@ -218,31 +218,31 @@ def read_skill_points(img: np.ndarray) -> int | None:
         except OSError as e:
             log_warning(t("ocr.debug_write_fail", path="skill_points_roi.png", err=e))
 
-    # 图像预处理：生成多种二值化变体，提高不同光照/对比度下的识别率
+    # 图像预处理：3 种针对「蓝/青底黑字」优化的二值化方法
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
-    # --- 变体 A: Otsu 自适应阈值（对全局亮度变化鲁棒） ---
-    _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # Tesseract 识别黑字白底效果最佳，确保数字为黑色、背景为白色
-    # 检测当前极性：如果边缘像素多为黑色，说明背景是黑色，需要反转
-    border_mean = (
-        thresh_otsu[0, :].mean() + thresh_otsu[-1, :].mean() + thresh_otsu[:, 0].mean() + thresh_otsu[:, -1].mean()
-    ) / 4
-    if border_mean < 128:
-        thresh_otsu = cv2.bitwise_not(thresh_otsu)
+    def _auto_polarity(thresh: np.ndarray) -> np.ndarray:
+        """确保黑字白底（Tesseract 最佳输入格式）。"""
+        border = (thresh[0, :].mean() + thresh[-1, :].mean() + thresh[:, 0].mean() + thresh[:, -1].mean()) / 4
+        return cv2.bitwise_not(thresh) if border < 128 else thresh
 
-    # --- 变体 B: 自适应高斯阈值（对局部阴影/渐变鲁棒） ---
+    # --- 方法 A: Otsu 全局阈值（自适应求最佳分割点，通用性最强） ---
+    _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    thresh_otsu = _auto_polarity(thresh_otsu)
+
+    # --- 方法 B: 自适应高斯阈值（抗局部光照渐变，对阴影/反光鲁棒） ---
     thresh_adapt = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 5)
-    border_mean_b = (
-        thresh_adapt[0, :].mean() + thresh_adapt[-1, :].mean() + thresh_adapt[:, 0].mean() + thresh_adapt[:, -1].mean()
-    ) / 4
-    if border_mean_b < 128:
-        thresh_adapt = cv2.bitwise_not(thresh_adapt)
+    thresh_adapt = _auto_polarity(thresh_adapt)
+
+    # --- 方法 C: 固定阈值 120（蓝底黑字专用） ---
+    # 青色背景灰度 ≈ 170，黑色数字灰度 ≈ 30-60，阈值 120 干净分离
+    _, thresh_fixed = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
+    thresh_fixed = _auto_polarity(thresh_fixed)
 
     # 对每种变体：加大边距（40px 白色）+ 放大 4 倍
     # 注意：必须使用 INTER_LINEAR，INTER_CUBIC 在 4x 时会导致字形失真
     preprocessed: list[tuple[str, np.ndarray]] = []
-    for label, thresh_img in [("otsu", thresh_otsu), ("adaptive", thresh_adapt)]:
+    for label, thresh_img in [("otsu", thresh_otsu), ("adaptive", thresh_adapt), ("fixed", thresh_fixed)]:
         padded = cv2.copyMakeBorder(thresh_img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
         upscaled = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
         preprocessed.append((label, upscaled))
@@ -257,7 +257,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
             log_warning(t("ocr.debug_write_fail", path="skill_points_*.png", err=e))
 
     # ===== OCR 多策略投票 =====
-    # 2 种预处理 × 4 种 PSM 模式 = 8 轮识别，取位数最长且出现最多的结果
+    # 3 种预处理 × 4 种 PSM 模式 = 12 轮识别，取位数最长且出现最多的结果
     # PSM 6 = 自动分割, 7 = 单行, 8 = 单词, 13 = 原始行
     candidates: list[int] = []
     for label, up_img in preprocessed:

@@ -21,7 +21,8 @@ const GUIDE_EN = `
     <li><strong>Set language to English</strong> (OCR depends on English text)</li>
     <li><strong>Buy main car</strong>: 1998 Subaru Impreza 22B-STI Version</li>
     <li><strong>Install S2 tune</strong>: Any S2-class tune (PI badge = blue)</li>
-    <li><strong>Favorite blueprint</strong>: Share code <code>890169683</code></li>
+    <li><strong>Favorite a blueprint</strong>: Any EventLab blueprint works. Default: <code>890169683</code> (~10 pts/race)</li>
+    <li><strong>Configure points</strong>: Set <strong>Points / Match</strong> and <strong>Target Points</strong> above to match your blueprint</li>
 </ol>
 <p class="warn">⚠️ The S2 blue PI badge is how the bot distinguishes "keep" vs "deletable" cars.</p>
 <h3>🚀 How to Use</h3>
@@ -35,7 +36,7 @@ const GUIDE_EN = `
 <h3>📊 Stage Descriptions</h3>
 <table>
     <tr><th>Stage</th><th>Description</th></tr>
-    <tr><td>🏎️ Farm</td><td>OCR scans skill points → auto-enters EventLab to farm up to 999</td></tr>
+    <tr><td>🏎️ Farm</td><td>OCR scans skill points → auto-enters EventLab to farm to target</td></tr>
     <tr><td>🛒 Buy</td><td>Navigate to Car Collection → batch-purchase 33 Subaru Imprezas</td></tr>
     <tr><td>⚡ Upgrade</td><td>Enter garage → select each NEW Impreza → spend skill points</td></tr>
     <tr><td>🗑️ Sell</td><td>Enter garage → batch-remove upgraded Imprezas (keep S2 main car)</td></tr>
@@ -55,7 +56,8 @@ const GUIDE_ZH = `
     <li><strong>游戏语言设置为英文</strong>（OCR 识别依赖英文文本）</li>
     <li><strong>购买主力车</strong>：1998 Subaru Impreza 22B-STI Version</li>
     <li><strong>安装 S2 级改装</strong>：任意 S2 改装方案（PI 徽章显示蓝色）</li>
-    <li><strong>收藏蓝图</strong>：搜索代码 <code>890169683</code></li>
+    <li><strong>收藏蓝图</strong>：支持任意 EventLab 蓝图。默认分享码 <code>890169683</code>（每局约 10 点）</li>
+    <li><strong>配置点数</strong>：在上方设置 <strong>单局点数</strong> 和 <strong>目标点数</strong> 以匹配你的蓝图</li>
 </ol>
 <p class="warn">⚠️ 主力车的 S2 蓝色 PI 徽章是程序区分「保留车」与「可删除车」的关键依据。</p>
 <h3>🚀 使用方法</h3>
@@ -69,7 +71,7 @@ const GUIDE_ZH = `
 <h3>📊 阶段说明</h3>
 <table>
     <tr><th>阶段</th><th>描述</th></tr>
-    <tr><td>🏎️ 刷点</td><td>OCR 扫描技能点 → 自动进入 EventLab 刷满 999</td></tr>
+    <tr><td>🏎️ 刷点</td><td>OCR 扫描技能点 → 自动进入 EventLab 刷到目标点数</td></tr>
     <tr><td>🛒 买车</td><td>导航至 Car Collection → 批量购买 33 辆 Subaru Impreza</td></tr>
     <tr><td>⚡ 加点</td><td>进入车库 → 逐辆选择 NEW 标签 Impreza → 消耗技能点</td></tr>
     <tr><td>🗑️ 卖车</td><td>进入车库 → 批量移除已升级 Impreza（保留 S2 主力车）</td></tr>

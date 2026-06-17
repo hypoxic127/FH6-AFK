@@ -21,6 +21,7 @@ FH6_AutoBot 计算机视觉模块 (module_ocr.py)
 
 import os
 import shutil
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -1027,7 +1028,7 @@ def verify_new_target_car(
             # 打印失败原因（方便调试）
             log_warning(t("ocr.lock_fail"))
             if not has_keyword:
-                log_warning(t("ocr.lock_r1_fail", n=len(matched_kws), kws=matched_kws, text=text.replace(chr(10), " ")))
+                log_warning(t("ocr.lock_r1_fail", n=len(matched_kws), kws=matched_kws, text="N/A"))
             else:
                 log_success(t("ocr.lock_r1_ok", n=len(matched_kws), kws=matched_kws))
 

@@ -31,8 +31,8 @@ from engine.ocr import (
     HSV_YELLOW_NEW_UPPER,
     IMPREZA_22B_KEYWORDS,
     IMPREZA_22B_MIN_MATCH,
-    YEAR_BRAND_REQUIRED,
     YEAR_BRAND_OPTIONAL,
+    YEAR_BRAND_REQUIRED,
     detect_selected_brand_tab,
     # 函数
     has_green_selection_border,

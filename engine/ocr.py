@@ -893,8 +893,9 @@ def check_is_high_class(image: np.ndarray | None, cursor_x: int, cursor_y: int) 
 
         hsv = cv2.cvtColor(badge, cv2.COLOR_BGR2HSV)
 
-        # 蓝色 (S1/S2 徽章): H=100-130, S>50, V>50
-        blue_mask = cv2.inRange(hsv, np.array([100, 50, 50]), np.array([130, 255, 255]))
+        # S2 徽章精确蓝色 #165EDB → HSV(109, 230, 219)
+        # 收窄范围: H=103-115, S≥180, V≥170（仅匹配 S2 徽章蓝）
+        blue_mask = cv2.inRange(hsv, np.array([103, 180, 170]), np.array([115, 255, 255]))
         blue_pixels = cv2.countNonZero(blue_mask)
 
         # 橙色 (B 级徽章): H=5-25, S>100, V>100

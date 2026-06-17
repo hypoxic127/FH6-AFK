@@ -11,7 +11,7 @@ const GUIDE_EN = `
 <h3>🖥️ Prerequisites</h3>
 <ol>
     <li><strong>Python 3.10+</strong></li>
-    <li><strong>Tesseract OCR</strong> — <a href="https://github.com/UB-Mannheim/tesseract/releases" target="_blank">Download</a> (check "Add to PATH")</li>
+    <li><strong>Tesseract OCR</strong> — <a href="https://github.com/UB-Mannheim/tesseract/releases" target="_blank">Download</a> (install to default location, auto-detected)</li>
     <li><strong>ViGEmBus</strong> driver — <a href="https://github.com/ViGEm/ViGEmBus/releases" target="_blank">Download</a> (restart required)</li>
     <li>Game must run in <strong>Windowed</strong> or <strong>Borderless Windowed</strong> mode</li>
     <li>Recommended resolution: <strong>2560×1440</strong></li>
@@ -46,7 +46,7 @@ const GUIDE_ZH = `
 <h3>🖥️ 前置要求</h3>
 <ol>
     <li><strong>Python 3.10+</strong></li>
-    <li><strong>Tesseract OCR</strong> — <a href="https://github.com/UB-Mannheim/tesseract/releases" target="_blank">下载安装</a>（安装时勾选 Add to PATH）</li>
+    <li><strong>Tesseract OCR</strong> — <a href="https://github.com/UB-Mannheim/tesseract/releases" target="_blank">下载安装</a>（默认路径安装即可，程序自动检测）</li>
     <li><strong>ViGEmBus</strong> 驱动 — <a href="https://github.com/ViGEm/ViGEmBus/releases" target="_blank">下载安装</a>（安装后需重启）</li>
     <li>游戏需运行在 <strong>窗口化</strong> 或 <strong>无边框窗口</strong> 模式</li>
     <li>建议分辨率：<strong>2560×1440</strong></li>

@@ -92,7 +92,7 @@
 | 软件 | 版本 | 下载 | 备注 |
 |:-----|:-----|:-----|:-----|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) | 安装时勾选 "Add to PATH" |
-| **Tesseract OCR** | 5.x | [下载链接](https://github.com/UB-Mannheim/tesseract/releases) | 安装时勾选 "Add to PATH" |
+| **Tesseract OCR** | 5.x | [下载链接](https://github.com/UB-Mannheim/tesseract/releases) | 默认路径安装即可（程序自动检测） |
 | **ViGEmBus** | 最新版 | [下载链接](https://github.com/ViGEm/ViGEmBus/releases) | 安装后需 **重启电脑** |
 
 ### 📥 安装步骤

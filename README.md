@@ -92,7 +92,7 @@
 | Software | Version | Download | Notes |
 |:---------|:--------|:---------|:------|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) | Check "Add to PATH" during install |
-| **Tesseract OCR** | 5.x | [Download](https://github.com/UB-Mannheim/tesseract/releases) | Check "Add to PATH" during install |
+| **Tesseract OCR** | 5.x | [Download](https://github.com/UB-Mannheim/tesseract/releases) | Install to default location (auto-detected) |
 | **ViGEmBus** | Latest | [Download](https://github.com/ViGEm/ViGEmBus/releases) | **Reboot required** after install |
 
 ### 📥 Installation

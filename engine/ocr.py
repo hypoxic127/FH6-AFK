@@ -20,6 +20,7 @@ FH6_AutoBot 计算机视觉模块 (module_ocr.py)
 """
 
 import os
+import shutil
 
 import cv2
 import numpy as np
@@ -126,17 +127,18 @@ def crop_card_roi(image: np.ndarray | None, cursor_x: int, cursor_y: int) -> np.
 
 
 def setup_tesseract() -> bool:
-    """
-    定位并配置 Tesseract OCR 引擎路径。
+    """定位并配置 Tesseract OCR 引擎路径。
 
-    查找策略：
-    1. 先检查系统 PATH 中是否已有 Tesseract
-    2. 如果没有，遍历 Windows 常见安装路径（Program Files 等）
-    3. 找到后设置 pytesseract.pytesseract.tesseract_cmd
+    查找策略（按优先级）：
+    1. 系统 PATH（pytesseract 默认行为）
+    2. Windows 注册表（UB-Mannheim 安装器写入的路径，覆盖自定义安装位置）
+    3. shutil.which() 搜索
+    4. 硬编码常见路径（Program Files / 本地 tools 目录 / PyInstaller 打包路径）
 
     返回:
         bool: True 表示配置成功，False 表示未找到 Tesseract
     """
+    # === 策略 1: 系统 PATH ===
     try:
         pytesseract.get_tesseract_version()
         log_success(t("ocr.tesseract_ok"))
@@ -144,7 +146,23 @@ def setup_tesseract() -> bool:
     except pytesseract.TesseractNotFoundError:
         pass
 
-    # Windows 常见安装路径 + 本地 tools 目录 + PyInstaller 打包路径
+    # === 策略 2: Windows 注册表 ===
+    # UB-Mannheim 安装器写入 HKLM\SOFTWARE\Tesseract-OCR\InstallDir
+    # 无论用户装到哪个目录都能找到
+    registry_path = _find_tesseract_in_registry()
+    if registry_path:
+        pytesseract.pytesseract.tesseract_cmd = registry_path
+        log_success(f"Tesseract found via Registry: {registry_path}")
+        return True
+
+    # === 策略 3: shutil.which() ===
+    which_path = shutil.which("tesseract")
+    if which_path and os.path.isfile(which_path):
+        pytesseract.pytesseract.tesseract_cmd = which_path
+        log_success(f"Tesseract found via which: {which_path}")
+        return True
+
+    # === 策略 4: 硬编码常见路径 ===
     script_dir = os.path.dirname(os.path.abspath(__file__))
     try:
         from engine.runtime import get_base_dir, get_user_dir
@@ -155,12 +173,18 @@ def setup_tesseract() -> bool:
         base_dir = os.path.dirname(script_dir)
         user_dir = base_dir
     common_paths = [
+        # 本地 tools 目录（便携版 / CI 打包）
         os.path.join(script_dir, "tools", "tesseract", "tesseract.exe"),
         os.path.join(base_dir, "tools", "tesseract", "tesseract.exe"),
         os.path.join(user_dir, "tesseract", "tesseract.exe"),
+        # exe 同级目录
+        os.path.join(base_dir, "tesseract", "tesseract.exe"),
+        os.path.join(base_dir, "Tesseract-OCR", "tesseract.exe"),
+        # Windows 默认安装路径
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
         os.path.expanduser(r"~\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"),
+        os.path.expanduser(r"~\AppData\Local\Tesseract-OCR\tesseract.exe"),
     ]
     for path in common_paths:
         if os.path.exists(path):
@@ -168,8 +192,46 @@ def setup_tesseract() -> bool:
             log_success(f"Configured Tesseract path: {path}")
             return True
 
-    log_warning("Tesseract OCR not found in common paths or PATH. OCR step may fail.")
+    log_warning(
+        "Tesseract OCR not found! Please install from: "
+        "https://github.com/UB-Mannheim/tesseract/releases\n"
+        "  Or place tesseract.exe in the 'Tesseract-OCR' folder next to this program."
+    )
     return False
+
+
+def _find_tesseract_in_registry() -> str | None:
+    """从 Windows 注册表查找 Tesseract 安装路径。
+
+    UB-Mannheim 安装器会写入以下注册表键：
+    - HKLM\\SOFTWARE\\Tesseract-OCR\\InstallDir
+    - HKCU\\SOFTWARE\\Tesseract-OCR\\InstallDir
+    同时检查 32 位和 64 位注册表视图。
+
+    返回:
+        Tesseract 可执行文件的完整路径，未找到则返回 None
+    """
+    if os.name != "nt":
+        return None
+
+    import winreg
+
+    # 注册表键 + 视图组合
+    reg_specs: list[tuple[int, str]] = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Tesseract-OCR"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Tesseract-OCR"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Tesseract-OCR"),
+    ]
+    for hive, subkey in reg_specs:
+        try:
+            with winreg.OpenKey(hive, subkey) as key:
+                install_dir, _ = winreg.QueryValueEx(key, "InstallDir")
+                exe_path = os.path.join(str(install_dir), "tesseract.exe")
+                if os.path.isfile(exe_path):
+                    return exe_path
+        except (FileNotFoundError, OSError):
+            continue
+    return None
 
 
 # ==========================================

@@ -74,6 +74,23 @@ CARD_CROP_W = 284  # 卡片裁剪宽度（像素）— 与实际高亮边框匹�
 CARD_CROP_H = 217  # 卡片裁剪高度（像素）— 与实际高亮边框匹配
 
 # ==========================================
+# 卡片内文字行 ROI（相对于 CARD_CROP 的百分比）
+# ==========================================
+# 第1行：车名（黑色 #000000，灰度值=0，会跑马灯滚动）
+# 例如 "IMPREZA 22B-STI VERSION"
+NAME_LINE_Y1: float = 0.0415
+NAME_LINE_Y2: float = 0.1613
+NAME_LINE_X1: float = 0.0282
+NAME_LINE_X2: float = 0.9613
+# 第2行：年份+品牌（灰色 #828282，灰度值≈130，静止不滚动）
+# 例如 "1998 SUBARU"
+# 注意：灰度值 130 > 127，固定阈值 127 的 BINARY_INV 会把文字当成背景丢掉！
+YEAR_LINE_Y1: float = 0.1567
+YEAR_LINE_Y2: float = 0.2765
+YEAR_LINE_X1: float = 0.2641
+YEAR_LINE_X2: float = 0.7641
+
+# ==========================================
 # 目标车辆识别关键词（全局唯一真相源）
 # ==========================================
 # 1998 Subaru Impreza 22B-STI Version 的独特特征关键词
@@ -85,6 +102,13 @@ IMPREZA_22B_OPTIONAL: list[str] = ["preza", "sti"]  # 至少命中 1 个
 # 向后兼容：保留原常量供 test 使用
 IMPREZA_22B_KEYWORDS: list[str] = IMPREZA_22B_REQUIRED + IMPREZA_22B_OPTIONAL
 IMPREZA_22B_MIN_MATCH: int = 2  # 向后兼容（但实际匹配逻辑已改用 REQUIRED+OPTIONAL）
+
+# --- 年份+品牌行识别关键词（第2行，灰色静止文字） ---
+# 使用宽松部分匹配，因为 OCR 对灰色小字噪声较大
+# "1998"→可能读成 "1995"/"199"/"19s" 等，用 "199" 前缀匹配
+# "subaru"→可能读成 "subar"/"suba"/"susar" 等，用 "sub" 匹配
+YEAR_BRAND_REQUIRED: list[str] = ["199"]  # 年份前缀必须命中
+YEAR_BRAND_OPTIONAL: list[str] = ["sub", "uba"]  # 品牌片段至少命中 1 个
 
 # ==========================================
 # 空位检测阈值
@@ -112,6 +136,224 @@ def match_impreza_22b(text: str) -> tuple[bool, list[str]]:
     all_matched = req_matched + opt_matched
 
     is_match = (len(req_matched) == len(IMPREZA_22B_REQUIRED)) and (len(opt_matched) >= 1)
+    return is_match, all_matched
+
+
+def match_year_brand(text: str) -> tuple[bool, list[str]]:
+    """检查年份+品牌行文本是否匹配 '1998 SUBARU'。
+
+    使用宽松前缀匹配，因为灰色小字 OCR 噪声较大：
+    - "199" 前缀匹配年份（1998 可能被读成 1995/1905/19s 等）
+    - "sub"/"uba" 匹配品牌（subaru 可能被读成 susar/suba 等）
+
+    Args:
+        text: OCR 识别出的年份行文本（已 lower()）
+
+    Returns:
+        (is_match, matched_keywords) 元组
+    """
+    text_lower = text.lower()
+    req_matched = [kw for kw in YEAR_BRAND_REQUIRED if kw in text_lower]
+    opt_matched = [kw for kw in YEAR_BRAND_OPTIONAL if kw in text_lower]
+    all_matched = req_matched + opt_matched
+
+    is_match = (len(req_matched) == len(YEAR_BRAND_REQUIRED)) and (len(opt_matched) >= 1)
+    return is_match, all_matched
+
+
+def _ocr_year_brand_text(card_img: np.ndarray | None, debug_label: str = "YEAR") -> str:
+    """对卡片的年份+品牌行（第2行，灰色 #828282 静止文字）做 OCR。
+
+    文字颜色 #828282（灰度值≈130），背景为浅色。
+    固定阈值 127 的 BINARY_INV 失效原因：130 > 127，文字被当成背景丢掉。
+    使用 Otsu 自适应阈值可自动找到 130~255 之间的最佳分割点。
+    此行文字不会滚动，是稳定的辅助识别信号。
+
+    Args:
+        card_img: BGR 格式的完整卡片裁剪图（284×217）
+        debug_label: 调试输出时的标签名
+
+    Returns:
+        str: 小写化的 OCR 识别文本，失败时返回空字符串
+    """
+    if card_img is None or card_img.size == 0:
+        return ""
+    try:
+        h, w = card_img.shape[:2]
+        # 裁剪年份+品牌行区域
+        y1 = int(h * YEAR_LINE_Y1)
+        y2 = int(h * YEAR_LINE_Y2)
+        x1 = int(w * YEAR_LINE_X1)
+        x2 = int(w * YEAR_LINE_X2)
+        year_roi = card_img[y1:y2, x1:x2]
+        if year_roi.size == 0:
+            return ""
+
+        gray = cv2.cvtColor(year_roi, cv2.COLOR_BGR2GRAY)
+        # Otsu 自适应阈值 — 灰色文字的最佳二值化方法
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        padded = cv2.copyMakeBorder(thresh, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+        upscaled = cv2.resize(padded, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        text = pytesseract.image_to_string(upscaled).strip().lower()
+
+        try:
+            safe_print(f"\n{Fore.CYAN}=================== [{debug_label} OCR] ===================")
+            safe_print(f"{Fore.CYAN}Year+Brand text:")
+            safe_print(Fore.WHITE + (text if text else "[empty]"))
+            safe_print(f"{Fore.CYAN}{'=' * (len(debug_label) + 36)}\n")
+        except UnicodeEncodeError:
+            pass
+        return text
+    except Exception as e:
+        log_error(f"_ocr_year_brand_text ({debug_label}) error: {e}")
+    return ""
+
+
+def _ocr_name_line_text(card_img: np.ndarray | None, debug_label: str = "NAME") -> str:
+    """对卡片的车名行（第1行，黑色 #000000 文字，可能滚动）做 OCR。
+
+    车名文字颜色 #000000（灰度值=0），背景为浅色。
+    使用 Otsu 自适应阈值获得最佳二值化效果。
+
+    Args:
+        card_img: BGR 格式的完整卡片裁剪图（284×217）
+        debug_label: 调试输出时的标签名
+
+    Returns:
+        str: 小写化的 OCR 识别文本，失败时返回空字符串
+    """
+    if card_img is None or card_img.size == 0:
+        return ""
+    try:
+        h, w = card_img.shape[:2]
+        # 裁剪车名行区域
+        y1 = int(h * NAME_LINE_Y1)
+        y2 = int(h * NAME_LINE_Y2)
+        x1 = int(w * NAME_LINE_X1)
+        x2 = int(w * NAME_LINE_X2)
+        name_roi = card_img[y1:y2, x1:x2]
+        if name_roi.size == 0:
+            return ""
+
+        gray = cv2.cvtColor(name_roi, cv2.COLOR_BGR2GRAY)
+        # 车名 #000000（灰度=0）在浅色背景上 → Otsu 自适应阈值
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        padded = cv2.copyMakeBorder(thresh, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+        upscaled = cv2.resize(padded, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        text = pytesseract.image_to_string(upscaled).strip().lower()
+
+        try:
+            safe_print(f"\n{Fore.YELLOW}=================== [{debug_label} OCR] ===================")
+            safe_print(f"{Fore.YELLOW}Car name text:")
+            safe_print(Fore.WHITE + (text if text else "[empty]"))
+            safe_print(f"{Fore.YELLOW}{'=' * (len(debug_label) + 36)}\n")
+        except UnicodeEncodeError:
+            pass
+        return text
+    except Exception as e:
+        log_error(f"_ocr_name_line_text ({debug_label}) error: {e}")
+    return ""
+
+
+def verify_impreza_22b(
+    card_img: np.ndarray | None,
+    debug_label: str = "VERIFY",
+    capture_card_fn: "Callable[[], np.ndarray | None] | None" = None,
+    max_name_retries: int = 5,
+    retry_delay: float = 0.3,
+) -> tuple[bool, list[str]]:
+    """综合验证卡片是否为 1998 Impreza 22B-STI，双行冗余 OCR + 滚动重试。
+
+    策略：
+    1. 先查第2行（年份+品牌，灰色 #828282，静止不滚动）→ 稳定信号
+    2. 再查第1行（车名，黑色 #000000，会跑马灯滚动）→ 确认 "22b"
+    3. 如果第2行命中但第1行未命中 → 连续重试第1行（因为滚动可能错过）
+    4. 第1行命中即确认；所有重试都失败则依赖第2行结果
+
+    Args:
+        card_img: BGR 格式的完整卡片裁剪图
+        debug_label: 调试标签
+        capture_card_fn: 可选回调函数，返回新的卡片裁剪图（用于滚动重试时重新截图）
+        max_name_retries: 第1行连续重试次数（仅当第2行命中且第1行未命中时触发）
+        retry_delay: 每次重试间隔（秒）
+
+    Returns:
+        (is_match, all_matched_keywords) 元组
+    """
+    import time
+
+    if card_img is None or card_img.size == 0:
+        return False, []
+
+    all_matched: list[str] = []
+
+    # === 步骤1：先查第2行（年份+品牌，静止可靠） ===
+    year_text = _ocr_year_brand_text(card_img, debug_label=f"{debug_label}_YEAR")
+    year_hit, year_kws = match_year_brand(year_text)
+    all_matched.extend([f"yr:{kw}" for kw in year_kws])
+
+    # === 步骤2：查第1行（车名，可能滚动） ===
+    name_text = _ocr_name_line_text(card_img, debug_label=f"{debug_label}_NAME")
+    name_hit, name_kws = match_impreza_22b(name_text)
+    all_matched.extend(name_kws)
+
+    # === 步骤3：滚动重试逻辑 ===
+    # 条件：第2行确认是 1998 SUBARU，但第1行没找到 "22b"（可能因为滚动错过）
+    if year_hit and not name_hit and capture_card_fn is not None:
+        try:
+            safe_print(
+                f"\n{Fore.YELLOW}[{debug_label}] "
+                f"年份行命中但车名行未命中 → 启动滚动重试 (最多 {max_name_retries} 次)"
+                f"{Style.RESET_ALL}"
+            )
+        except UnicodeEncodeError:
+            pass
+
+        for attempt in range(1, max_name_retries + 1):
+            time.sleep(retry_delay)
+            try:
+                new_card = capture_card_fn()
+                if new_card is None or new_card.size == 0:
+                    continue
+                retry_text = _ocr_name_line_text(new_card, debug_label=f"{debug_label}_RETRY_{attempt}")
+                retry_hit, retry_kws = match_impreza_22b(retry_text)
+                if retry_hit:
+                    name_hit = True
+                    # 只追加新命中的关键词（去重）
+                    for kw in retry_kws:
+                        if kw not in all_matched:
+                            all_matched.append(kw)
+                    try:
+                        safe_print(f"{Fore.GREEN}[{debug_label}] 重试 #{attempt} 命中! kw={retry_kws}{Style.RESET_ALL}")
+                    except UnicodeEncodeError:
+                        pass
+                    break
+            except Exception as e:
+                log_warning(f"[{debug_label}] 重试 #{attempt} 异常: {e}")
+
+        if not name_hit:
+            try:
+                safe_print(
+                    f"{Fore.YELLOW}[{debug_label}] "
+                    f"{max_name_retries} 次重试均未命中车名行，依赖年份行结果"
+                    f"{Style.RESET_ALL}"
+                )
+            except UnicodeEncodeError:
+                pass
+
+    # === 最终判定 ===
+    # 任一行命中即通过（双行冗余）
+    is_match = name_hit or year_hit
+
+    try:
+        status = f"{Fore.GREEN}✓ CONFIRMED" if is_match else f"{Fore.RED}✗ REJECTED"
+        safe_print(
+            f"\n{Fore.MAGENTA}[{debug_label}] name_hit={name_hit} year_hit={year_hit} → {status}{Style.RESET_ALL}"
+        )
+        safe_print(f"{Fore.MAGENTA}  matched: {all_matched}{Style.RESET_ALL}\n")
+    except UnicodeEncodeError:
+        pass
+
     return is_match, all_matched
 
 
@@ -741,18 +983,9 @@ def verify_new_target_car(
         if roi is None:
             return False
 
-        # --- 校验 1: OCR 多关键词全命中检查 ---
-        # 1998 Subaru Impreza 22B-STi Version 的独特特征关键词
-        # 要求至少命中 2 个才算锁定，避免误选其它 Subaru 车型
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
-        padded = cv2.copyMakeBorder(thresh, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[255, 255, 255])
-        upscaled = cv2.resize(padded, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-
-        text = pytesseract.image_to_string(upscaled).strip().lower()
-
-        # 目标车特征关键词匹配（使用 required+optional 逻辑排除 WRX STI）
-        has_keyword, matched_kws = match_impreza_22b(text)
+        # --- 校验 1: 双行冗余 OCR 检查 ---
+        # 车名行（白色大字，可能滚动）+ 年份品牌行（灰色小字，静止）
+        has_keyword, matched_kws = verify_impreza_22b(roi, debug_label="SKILLPOINT")
 
         if has_keyword:
             safe_print(f"{Fore.GREEN}{t('ocr.keyword_hit', n=len(matched_kws), kws=matched_kws)}{Style.RESET_ALL}")

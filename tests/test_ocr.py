@@ -31,11 +31,14 @@ from engine.ocr import (
     HSV_YELLOW_NEW_UPPER,
     IMPREZA_22B_KEYWORDS,
     IMPREZA_22B_MIN_MATCH,
+    YEAR_BRAND_REQUIRED,
+    YEAR_BRAND_OPTIONAL,
     detect_selected_brand_tab,
     # 函数
     has_green_selection_border,
     is_empty_slot,
     match_impreza_22b,
+    match_year_brand,
 )
 
 # ==========================================
@@ -105,6 +108,46 @@ class TestImprezaKeywords:
         ocr_text = "2008 subaru impreza wrx sti"
         is_match, matched = match_impreza_22b(ocr_text)
         assert not is_match, f"WRX STI should NOT match but got matched={matched}"
+
+
+# ==========================================
+# 年份+品牌行匹配逻辑
+# ==========================================
+
+
+class TestYearBrandKeywords:
+    """年份+品牌行关键词匹配（第2行，灰色静止文字）。"""
+
+    def test_keywords_not_empty(self) -> None:
+        assert len(YEAR_BRAND_REQUIRED) >= 1
+        assert len(YEAR_BRAND_OPTIONAL) >= 1
+
+    def test_perfect_text_matches(self) -> None:
+        """完美 OCR 文本应匹配。"""
+        is_match, matched = match_year_brand("1998 subaru")
+        assert is_match
+        assert len(matched) >= 2
+
+    def test_noisy_text_matches(self) -> None:
+        """带噪声的 OCR 文本也应匹配。"""
+        # 常见 OCR 噪声模式
+        for noisy in ["1995 subar", "199s suba", "1990 subaru"]:
+            is_match, _ = match_year_brand(noisy)
+            assert is_match, f"Noisy text '{noisy}' should match"
+
+    def test_wrong_year_fails(self) -> None:
+        """2008 系列不应匹配。"""
+        is_match, _ = match_year_brand("2008 subaru")
+        assert not is_match
+
+    def test_wrong_brand_fails(self) -> None:
+        """只有年份没有品牌不应匹配。"""
+        is_match, _ = match_year_brand("1998 toyota")
+        assert not is_match
+
+    def test_empty_text_fails(self) -> None:
+        is_match, _ = match_year_brand("")
+        assert not is_match
 
 
 # ==========================================

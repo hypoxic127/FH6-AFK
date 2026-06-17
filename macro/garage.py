@@ -313,7 +313,7 @@ def _scan_and_delete_cars(hwnd, gamepad):
         if module_ocr.check_is_high_class(resized, cx, cy):
             log_warning(t("garage.high_class_skip"))
             return False
-        # 卡片 OCR 校验：复用 _ocr_card_text + 全局关键词常量
+        # 卡片 OCR 校验：双行冗余 OCR（车名行 + 年份品牌行）
         try:
             crop_w, crop_h = module_ocr.CARD_CROP_W, module_ocr.CARD_CROP_H
             _x1 = max(0, cx - crop_w // 2)
@@ -321,12 +321,23 @@ def _scan_and_delete_cars(hwnd, gamepad):
             _y1 = max(0, cy - crop_h // 2)
             _y2 = min(resized.shape[0], cy + crop_h // 2)
             card_roi = resized[_y1:_y2, _x1:_x2]
-            card_text = module_ocr._ocr_card_text(card_roi, debug_label="DELETE")
-            is_match, matched = module_ocr.match_impreza_22b(card_text)
+
+            # 重新截图回调：用于车名行滚动重试
+            def _recapture_card() -> np.ndarray | None:
+                new_shot, _, _, _, _ = capture_screenshot(hwnd)
+                if new_shot is None:
+                    return None
+                return new_shot[_y1:_y2, _x1:_x2]
+
+            is_match, matched = module_ocr.verify_impreza_22b(
+                card_roi,
+                debug_label="DELETE",
+                capture_card_fn=_recapture_card,
+            )
             if is_match:
                 log_success(t("garage.card_confirmed", n=len(matched), matched=matched))
             else:
-                log_warning(t("garage.card_mismatch", n=len(matched), matched=matched, text=card_text[:50]))
+                log_warning(t("garage.card_mismatch", n=len(matched), matched=matched, text="(dual-line)"))
                 return False
         except Exception as e:
             log_warning(t("garage.card_error", err=e))
@@ -558,7 +569,7 @@ def navigate_to_main_car(hwnd, gamepad):
 
             # 直接检测 PI 颜色，不需要模板匹配
             if module_ocr.check_is_high_class(resized, cx, cy):
-                # 二次验证：复用 _ocr_card_text 管线确认是 Impreza 22B
+                # 二次验证：双行冗余 OCR 确认是 Impreza 22B
                 is_target_car = False
                 try:
                     crop_w, crop_h = module_ocr.CARD_CROP_W, module_ocr.CARD_CROP_H
@@ -567,9 +578,19 @@ def navigate_to_main_car(hwnd, gamepad):
                     _y1 = max(0, cy - crop_h // 2)
                     _y2 = min(resized.shape[0], cy + crop_h // 2)
                     card_roi = resized[_y1:_y2, _x1:_x2]
-                    card_text = module_ocr._ocr_card_text(card_roi, debug_label="MAIN_CAR")
-                    # 使用 required+optional 匹配（排除 2008 WRX STI）
-                    is_target_car, matched = module_ocr.match_impreza_22b(card_text)
+
+                    # 重新截图回调：用于车名行滚动重试
+                    def _recapture_card() -> np.ndarray | None:
+                        new_shot, _, _, _, _ = capture_screenshot(hwnd)
+                        if new_shot is None:
+                            return None
+                        return new_shot[_y1:_y2, _x1:_x2]
+
+                    is_target_car, matched = module_ocr.verify_impreza_22b(
+                        card_roi,
+                        debug_label="MAIN_CAR",
+                        capture_card_fn=_recapture_card,
+                    )
                     if is_target_car:
                         log_success(t("garage.card_confirmed", n=len(matched), matched=matched))
                     else:
@@ -579,7 +600,7 @@ def navigate_to_main_car(hwnd, gamepad):
                                 row=row + 1,
                                 n=len(matched),
                                 matched=matched,
-                                text=card_text[:50],
+                                text="(dual-line)",
                             )
                         )
                 except Exception as e:

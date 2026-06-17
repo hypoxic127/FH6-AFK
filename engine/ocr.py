@@ -199,11 +199,12 @@ def read_skill_points(img: np.ndarray) -> int | None:
     h, w, _ = img.shape
 
     # 技能点数字位于暂停菜单 Car Mastery 区域下方（蓝底黑字）
-    # 左边界 28.5%：避开 27%-28% 处的 UI 分隔竖线（会干扰 Tesseract 误读 1→4）
-    # 右边界 33%：三位数字（如 712/999）需要足够宽度
+    # 左边界 27%：需要足够宽以容纳三位数字（如 712/999）
+    # 右边界 33%：右侧留余量避免裁到最后一位
+    # UI 分隔竖线通过 _remove_vertical_lines() 在预处理阶段去除
     crop_y1 = int(h * 0.72)
     crop_y2 = int(h * 0.77)
-    crop_x1 = int(w * 0.285)
+    crop_x1 = int(w * 0.27)
     crop_x2 = int(w * 0.33)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
@@ -226,18 +227,34 @@ def read_skill_points(img: np.ndarray) -> int | None:
         border = (thresh[0, :].mean() + thresh[-1, :].mean() + thresh[:, 0].mean() + thresh[:, -1].mean()) / 4
         return cv2.bitwise_not(thresh) if border < 128 else thresh
 
+    def _remove_vertical_lines(thresh: np.ndarray) -> np.ndarray:
+        """去除 ROI 左侧的 UI 分隔竖线（1-3px 宽、贯穿全高）。
+
+        扫描前 15% 的列，如果某列 >70% 为前景（黑=0），
+        则判定为 UI 竖线而非数字笔画，擦除为白色背景。
+        不使用 break：竖线可能不在最左边缘（前方有白色间隙）。
+        """
+        cleaned = thresh.copy()
+        roi_h, roi_w = cleaned.shape
+        scan_limit = max(1, int(roi_w * 0.15))
+        for col in range(scan_limit):
+            black_ratio = np.sum(cleaned[:, col] == 0) / roi_h
+            if black_ratio > 0.70:
+                cleaned[:, col] = 255
+        return cleaned
+
     # --- 方法 A: Otsu 全局阈值（自适应求最佳分割点，通用性最强） ---
     _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    thresh_otsu = _auto_polarity(thresh_otsu)
+    thresh_otsu = _remove_vertical_lines(_auto_polarity(thresh_otsu))
 
     # --- 方法 B: 自适应高斯阈值（抗局部光照渐变，对阴影/反光鲁棒） ---
     thresh_adapt = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 5)
-    thresh_adapt = _auto_polarity(thresh_adapt)
+    thresh_adapt = _remove_vertical_lines(_auto_polarity(thresh_adapt))
 
     # --- 方法 C: 固定阈值 120（蓝底黑字专用） ---
     # 青色背景灰度 ≈ 170，黑色数字灰度 ≈ 30-60，阈值 120 干净分离
     _, thresh_fixed = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
-    thresh_fixed = _auto_polarity(thresh_fixed)
+    thresh_fixed = _remove_vertical_lines(_auto_polarity(thresh_fixed))
 
     # 对每种变体：加大边距（40px 白色）+ 放大 4 倍
     # 注意：必须使用 INTER_LINEAR，INTER_CUBIC 在 4x 时会导致字形失真

@@ -528,14 +528,13 @@ def read_skill_points(img: np.ndarray) -> int | None:
     """
     h, w, _ = img.shape
 
-    # 技能点数字位于暂停菜单 Car Mastery 区域下方（蓝底黑字）
-    # 左边界 27%：需要足够宽以容纳三位数字（如 712/999）
-    # 右边界 33%：右侧留余量避免裁到最后一位
-    # UI 分隔竖线通过 _remove_vertical_lines() 在预处理阶段去除
-    crop_y1 = int(h * 0.72)
-    crop_y2 = int(h * 0.77)
-    crop_x1 = int(w * 0.27)
-    crop_x2 = int(w * 0.33)
+    # 技能点数字位于暂停菜单 Car Mastery 区域下方（背景为 #2AECF3 青色，文字为 #000000 黑色）
+    # 使用用户精确标注的坐标，有效避开左侧 UI 分隔线，提高识别纯净度
+    crop_y1 = int(h * 0.7244)
+    crop_y2 = int(h * 0.7611)
+    crop_x1 = int(w * 0.2756)
+    # 根据用户手动标注精调右边界，容纳三位数字（如 999），避免将 UI 的其他部分圈入
+    crop_x2 = int(w * 0.3044)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
     if roi.size == 0:
@@ -582,7 +581,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     thresh_adapt = _remove_vertical_lines(_auto_polarity(thresh_adapt))
 
     # --- 方法 C: 固定阈值 120（蓝底黑字专用） ---
-    # 青色背景灰度 ≈ 170，黑色数字灰度 ≈ 30-60，阈值 120 干净分离
+    # 背景 #2AECF3 (灰度值≈178)，黑色数字 (灰度值≈0)，阈值 120 干净分离
     _, thresh_fixed = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
     thresh_fixed = _remove_vertical_lines(_auto_polarity(thresh_fixed))
 

@@ -15,7 +15,6 @@ from engine.ocr import DEBUG_WRITE_FILES
 from engine.utils import find_game_window, log_error, log_info, log_success, log_warning, safe_print
 from engine.utils import press_button as _press_button
 from macro.core import (
-    CARS_TO_PROCESS,
     capture_screenshot,
     log_step_header,
 )
@@ -632,9 +631,9 @@ def dynamic_navigate_to_target(template_path, vision_engine, gamepad, hwnd=None,
 # ==========================================
 
 
-def action_buy_single_car(hwnd, gamepad, car_index):
+def action_buy_single_car(hwnd, gamepad, car_index, total_cars):
     """执行单辆车购买：START → Down → A×3。"""
-    log_info(t("buy.buy_start", n=car_index, total=CARS_TO_PROCESS))
+    log_info(t("buy.buy_start", n=car_index, total=total_cars))
 
     log_info(t("buy.buy_start_menu"))
     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=2.0)
@@ -650,4 +649,4 @@ def action_buy_single_car(hwnd, gamepad, car_index):
         else:
             time.sleep(5.0)
 
-    log_success(t("buy.buy_done", n=car_index, total=CARS_TO_PROCESS))
+    log_success(t("buy.buy_done", n=car_index, total=total_cars))

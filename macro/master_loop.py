@@ -17,7 +17,6 @@ from engine.event_bus import get_bus
 from engine.i18n import t
 from engine.utils import log_error, log_info, log_success, log_warning
 from macro.core import (
-    CARS_TO_PROCESS,
     MAX_SKILL_POINTS,
     STATE_BUY_CARS,
     STATE_FARM_POINTS,
@@ -28,6 +27,7 @@ from macro.core import (
     capture_screenshot,
     find_game_window,
     force_foreground,
+    get_cars_to_process,
     log_state_header,
 )
 from macro.garage import (
@@ -115,7 +115,8 @@ def run_master_bot_loop(
                 # --- 1. 买车阶段 ---
 
                 if current_state == STATE_BUY_CARS:
-                    log_state_header(STATE_BUY_CARS, t("loop.buy_desc", count=CARS_TO_PROCESS))
+                    cars_to_process = get_cars_to_process()
+                    log_state_header(STATE_BUY_CARS, t("loop.buy_desc", count=cars_to_process))
                     success = navigate_to_impreza_purchase_screen(hwnd, gamepad)
                     if not success:
                         log_error(t("loop.nav_fail"))
@@ -124,10 +125,10 @@ def run_master_bot_loop(
 
                     log_success(t("loop.nav_ok"))
                     log_info(t("loop.buying"))
-                    for i in range(1, CARS_TO_PROCESS + 1):
-                        action_buy_single_car(hwnd, gamepad, i)
+                    for i in range(1, cars_to_process + 1):
+                        action_buy_single_car(hwnd, gamepad, i, cars_to_process)
 
-                    log_success(t("loop.buy_done", count=CARS_TO_PROCESS))
+                    log_success(t("loop.buy_done", count=cars_to_process))
 
                     log_info(t("loop.press_b_back"))
                     for i in range(4):
@@ -339,12 +340,19 @@ def run_master_bot_loop(
                             _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER, delay=0.5)
 
                         if detected_points is not None:
-                            log_info(t("loop.verify_pts", pts=detected_points, max=MAX_SKILL_POINTS))
-                            if detected_points >= MAX_SKILL_POINTS:
-                                log_success(t("loop.verify_ok", pts=detected_points, max=MAX_SKILL_POINTS))
+                            from engine.runtime import load_bot_config
+
+                            config = load_bot_config()
+                            target_points = config.get("target_points", MAX_SKILL_POINTS)
+                            log_info(t("loop.verify_pts", pts=detected_points, max=target_points))
+
+                            # If OCR is known to sometimes miss digits (e.g. 999 read as 99), we should be careful.
+                            # However, if target_points is used, it will at least stop when target_points is 500.
+                            if detected_points >= target_points:
+                                log_success(t("loop.verify_ok", pts=detected_points, max=target_points))
                                 verified_999 = True
                             else:
-                                shortfall = MAX_SKILL_POINTS - detected_points
+                                shortfall = target_points - detected_points
                                 extra_races = max(1, shortfall // 10 + 1)
                                 log_warning(t("loop.verify_low", pts=detected_points, diff=shortfall))
                                 log_info(t("loop.verify_extra", races=extra_races))
@@ -357,7 +365,11 @@ def run_master_bot_loop(
                             log_warning(t("loop.verify_ocr_fail"))
                             verified_999 = True
 
-                    log_success(t("loop.farm_done", max=MAX_SKILL_POINTS))
+                    from engine.runtime import load_bot_config
+
+                    config = load_bot_config()
+                    target_points = config.get("target_points", MAX_SKILL_POINTS)
+                    log_success(t("loop.farm_done", max=target_points))
 
                     if skip_buy:
                         current_state = STATE_UPGRADE_CARS

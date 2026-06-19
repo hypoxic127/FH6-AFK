@@ -11,7 +11,6 @@ tests/test_core.py — macro/core.py 常量与配置测试
 import pytest
 
 from macro.core import (
-    CARS_TO_PROCESS,
     MAX_SKILL_POINTS,
     POINTS_PER_CAR,
     STATE_BUY_CARS,
@@ -33,9 +32,12 @@ class TestCoreConstants:
         assert POINTS_PER_CAR == 30
 
     def test_cars_to_process_formula(self) -> None:
-        """CARS_TO_PROCESS 应等于 MAX_SKILL_POINTS // POINTS_PER_CAR。"""
-        assert CARS_TO_PROCESS == MAX_SKILL_POINTS // POINTS_PER_CAR
-        assert CARS_TO_PROCESS == 33
+        """get_cars_to_process() 应基于配置计算。由于单元测试没有真正配置，默认返回 MAX_SKILL_POINTS // POINTS_PER_CAR。"""
+        from macro.core import get_cars_to_process
+
+        cars = get_cars_to_process()
+        assert cars == MAX_SKILL_POINTS // POINTS_PER_CAR
+        assert cars == 33
 
     def test_state_constants_unique(self) -> None:
         """四个状态常量必须互不相同。"""

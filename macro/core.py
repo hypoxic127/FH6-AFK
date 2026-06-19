@@ -30,8 +30,15 @@ MAX_SKILL_POINTS = 999  # 技能点满值上限
 
 POINTS_PER_CAR = 30  # 每辆 Impreza 技能树加满超级抽奖需要 30 点
 
+
 # 每轮循环能够处理的车辆数 = 999 // 30 = 33 辆
-CARS_TO_PROCESS = MAX_SKILL_POINTS // POINTS_PER_CAR
+def get_cars_to_process():
+    from engine.runtime import load_bot_config
+
+    config = load_bot_config()
+    target = config.get("target_points", MAX_SKILL_POINTS)
+    return target // POINTS_PER_CAR
+
 
 # 主状态机的四个状态常量（循环顺序：刷点 -> 买车 -> 加点 -> 卖车 -> 刷点...）
 STATE_BUY_CARS = "STATE_BUY_CARS"  # 阶段 2：批量购买 Subaru Impreza

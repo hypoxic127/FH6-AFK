@@ -14,7 +14,7 @@ __all__ = [
     "force_foreground",
     "MAX_SKILL_POINTS",
     "POINTS_PER_CAR",
-    "CARS_TO_PROCESS",
+    "get_cars_to_process",
     "STATE_BUY_CARS",
     "STATE_UPGRADE_CARS",
     "STATE_TRASH_CARS",
@@ -40,9 +40,9 @@ __all__ = [
 ]
 
 from macro.core import (
-    CARS_TO_PROCESS,
     MAX_SKILL_POINTS,
     POINTS_PER_CAR,
+    get_cars_to_process,
     STATE_BUY_CARS,
     STATE_FARM_POINTS,
     STATE_TRASH_CARS,

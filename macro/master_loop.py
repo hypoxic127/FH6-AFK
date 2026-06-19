@@ -24,6 +24,7 @@ from macro.core import (
     STATE_TRASH_CARS,
     STATE_UPGRADE_CARS,
     _press_button,
+    capture_raw_screenshot,
     capture_screenshot,
     find_game_window,
     force_foreground,
@@ -319,10 +320,12 @@ def run_master_bot_loop(
                             if detected_state == "CARS":
                                 log_success(t("loop.verify_cars_ok", state=detected_state))
                                 cars_found = True
-                                # 在 CARS 页读取技能点
-                                pts = module_ocr.read_skill_points(resized_v)
-                                if pts is not None:
-                                    detected_points = pts
+                                # 在 CARS 页读取技能点 (使用原始分辨率截图以保证 OCR 精确度)
+                                raw_img = capture_raw_screenshot(hwnd)
+                                if raw_img is not None:
+                                    pts = module_ocr.read_skill_points(raw_img)
+                                    if pts is not None:
+                                        detected_points = pts
                                 break
 
                             log_info(t("loop.verify_rb", n=rb_press + 1, state=detected_state))

@@ -533,8 +533,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
     crop_y1 = int(h * 0.7244)
     crop_y2 = int(h * 0.7611)
     crop_x1 = int(w * 0.2756)
-    # 根据用户手动标注精调右边界，容纳三位数字（如 999），避免将 UI 的其他部分圈入
-    crop_x2 = int(w * 0.3044)
+    # 适当放宽右边界，确保能完整容纳三位数字（如 999），避免因为截断导致第三个数字丢失而识别成两位数
+    crop_x2 = int(w * 0.315)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
     if roi.size == 0:

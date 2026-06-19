@@ -532,9 +532,9 @@ def read_skill_points(img: np.ndarray) -> int | None:
     # 使用用户精确标注的坐标，有效避开左侧 UI 分隔线，提高识别纯净度
     crop_y1 = int(h * 0.7244)
     crop_y2 = int(h * 0.7611)
-    crop_x1 = int(w * 0.2756)
+    crop_x1 = int(w * 0.28)
     # 适当放宽右边界，确保能完整容纳三位数字（如 999），避免因为截断导致第三个数字丢失而识别成两位数
-    crop_x2 = int(w * 0.315)
+    crop_x2 = int(w * 0.307)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
     if roi.size == 0:

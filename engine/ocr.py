@@ -641,7 +641,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     if fallback_img is not None:
         try:
             raw_text = pytesseract.image_to_string(fallback_img).strip().lower()
-            if not raw_text or "no" in raw_text or "avail" in raw_text or "point" in raw_text:
+            if raw_text and ("no" in raw_text or "avail" in raw_text or "point" in raw_text):
                 log_success(t("ocr.zero_detect", text=raw_text))
                 return 0
         except pytesseract.TesseractError as e:

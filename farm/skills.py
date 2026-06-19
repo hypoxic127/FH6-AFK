@@ -68,7 +68,9 @@ def get_matches_needed(current_points: int) -> int:
     max_points = config["target_points"]
     points_per_match = max(1, config["points_per_match"])  # 防止除零
     matches_needed = math.ceil((max_points - current_points) / points_per_match)
-    return 0 if matches_needed < 0 else matches_needed
+    # 限制单次任务最大场次，防止极端情况下的超长跑图
+    matches_needed = min(max(0, matches_needed), 120)
+    return matches_needed
 
 
 def _get_archive_path() -> str:
@@ -139,9 +141,17 @@ def load_race_state() -> tuple[int, int, str] | None:
     try:
         with open(state_path, "r", encoding="utf-8") as f:
             state = json.load(f)
+
         matches_needed = state.get("matches_needed", 0)
         matches_completed = state.get("matches_completed", 0)
-        last_updated = state.get("last_updated", "unknown")
+        last_updated = str(state.get("last_updated", "unknown"))
+
+        # 类型与范围校验 (SEC-3)
+        if not isinstance(matches_needed, int) or matches_needed < 0:
+            matches_needed = 0
+        if not isinstance(matches_completed, int) or matches_completed < 0:
+            matches_completed = 0
+
         if matches_needed > 0:
             return matches_needed, matches_completed, last_updated
         return None
@@ -203,6 +213,7 @@ class FarmStateMachine:
         self.waiting_for_gameplay: bool = False
         self._wait_next_start: float = 0.0  # 进入 waiting_for_next 的时间戳
         self.points_scanned: bool = False
+        self.ocr_fail_count: int = 0
 
         # 计数器
         self.matches_needed: int = 0
@@ -540,6 +551,7 @@ class FarmStateMachine:
         safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.cars_scan')}{Style.RESET_ALL}")
         detected_points = module_ocr.read_skill_points(img)
         if detected_points is not None:
+            self.ocr_fail_count = 0  # 成功后重置计数
             self.matches_needed = get_matches_needed(detected_points)
             safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
             safe_print(t("farm.scan_ok_title"))
@@ -562,8 +574,21 @@ class FarmStateMachine:
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
         else:
             if not self.points_scanned:
-                log_warning(t("farm.ocr_fail_retry"))
-                time.sleep(0.5)
+                self.ocr_fail_count += 1
+                if self.ocr_fail_count >= 10:
+                    log_warning(
+                        "OCR failed to read skill points 10 times consecutively. Assuming zero points as fallback to avoid infinite loops."
+                    )
+                    # 假装读取到0点
+                    self.matches_needed = get_matches_needed(0)
+                    self.last_points = 0
+                    self.points_scanned = True
+                    save_race_state(self.matches_needed, self.matches_completed)
+                    safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
+                    press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
+                else:
+                    log_warning(t("farm.ocr_fail_retry"))
+                    time.sleep(0.5)
             else:
                 log_warning(t("farm.ocr_fail_use", count=self.matches_needed))
                 safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")

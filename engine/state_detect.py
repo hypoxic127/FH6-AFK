@@ -217,12 +217,18 @@ class StateDetector:
         检测当前处于哪个导航子页面。
         使用 OCR 关键字匹配 + 直方图辅助。
         """
-        # CAR_SELECT: 检测 h9-14%, w6-14% 是否含 "My Cars"
+        # 读取左上角通用标题区域：h8-16%, w4-30%
+        header_roi = resized[int(h * 0.08) : int(h * 0.16), int(w * 0.04) : int(w * 0.30)]
+        header_gray = cv2.cvtColor(header_roi, cv2.COLOR_BGR2GRAY)
+        _, header_thresh = cv2.threshold(header_gray, 150, 255, cv2.THRESH_BINARY)
+        header_text = pytesseract.image_to_string(header_thresh, config="--psm 7").strip().lower()
+
+        # CAR_SELECT: 检测标题是否含 "my cars" 或原有逻辑
         car_title_roi = resized[int(h * 0.09) : int(h * 0.14), int(w * 0.06) : int(w * 0.14)]
         car_title_gray = cv2.cvtColor(car_title_roi, cv2.COLOR_BGR2GRAY)
         _, car_title_thresh = cv2.threshold(car_title_gray, 200, 255, cv2.THRESH_BINARY)
         car_title_text = pytesseract.image_to_string(car_title_thresh, config="--psm 7").strip().lower()
-        if "my" in car_title_text and "car" in car_title_text:
+        if ("my" in car_title_text and "car" in car_title_text) or ("my" in header_text and "car" in header_text):
             return "CAR_SELECT"
 
         # PRE_RACE: 检测 h60-65%, w4-23% 是否含 "Start Race Event" (黑底白字)
@@ -244,22 +250,22 @@ class StateDetector:
         # 中心区域 OCR：用于 EventLab 相关页面
         center_roi = resized[int(h * 0.20) : int(h * 0.50), int(w * 0.10) : int(w * 0.50)]
         center_gray = cv2.cvtColor(center_roi, cv2.COLOR_BGR2GRAY)
-        _, center_thresh = cv2.threshold(center_gray, 180, 255, cv2.THRESH_BINARY)
+        _, center_thresh = cv2.threshold(center_gray, 160, 255, cv2.THRESH_BINARY)
         center_text = pytesseract.image_to_string(center_thresh, config="--psm 6").strip().lower()
 
         # EVENTLAB_MENU: 含 "play event" 或 "eventlab"
         if "play" in center_text and "event" in center_text:
             return "EVENTLAB_MENU"
-        if "eventlab" in center_text:
+        if "eventlab" in center_text or "eventlab" in header_text:
             return "EVENTLAB_MENU"
 
         # CREATIVE_HUB 子页面: 含 "creative" 或 "hub"
-        if "creative" in center_text and "hub" in center_text:
+        if ("creative" in center_text and "hub" in center_text) or ("creative" in header_text and "hub" in header_text):
             return "CREATIVE_HUB_PAGE"
 
         # EVENTS 页面（含子标签 Featured / Popular / My Favorites 等）
         # header 显示 "Events" → 检查 My Favorites 子标签是否已选中
-        if "event" in car_title_text or "vents" in car_title_text:
+        if "event" in car_title_text or "vents" in car_title_text or "event" in header_text:
             # 检测 My Favorites 子标签是否激活（h15-18%, w20-34%）
             fav_tab_roi = resized[int(h * 0.15) : int(h * 0.18), int(w * 0.20) : int(w * 0.34)]
             fav_gray = cv2.cvtColor(fav_tab_roi, cv2.COLOR_BGR2GRAY)

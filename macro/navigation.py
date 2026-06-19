@@ -190,8 +190,11 @@ def return_to_garage(hwnd, gamepad):
     """完整返回车库流程：视觉刹车→Down→A→Down×7→A→等待→LB扫Subaru。"""
     log_info(t("nav.return_garage"))
 
-    safe_exit_to_menu(hwnd, gamepad)
-
+    try:
+        safe_exit_to_menu(hwnd, gamepad)
+    except TimeoutError as e:
+        log_warning(f"Return to garage exit menu timeout: {e}")
+        # Continue to try garage return sequence even if visual confirmation fails
     log_info(t("nav.wait_stable"))
     time.sleep(1.0)
 

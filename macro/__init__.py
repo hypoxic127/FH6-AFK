@@ -42,7 +42,6 @@ __all__ = [
 from macro.core import (
     MAX_SKILL_POINTS,
     POINTS_PER_CAR,
-    get_cars_to_process,
     STATE_BUY_CARS,
     STATE_FARM_POINTS,
     STATE_TRASH_CARS,
@@ -52,6 +51,7 @@ from macro.core import (
     capture_screenshot,
     find_game_window,
     force_foreground,
+    get_cars_to_process,
     log_state_header,
     log_step_header,
 )

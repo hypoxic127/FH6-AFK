@@ -81,7 +81,12 @@ def load_bot_config() -> dict[str, int]:
 
             user_cfg = json.load(f)
         merged = dict(_DEFAULT_BOT_CONFIG)
-        merged.update(user_cfg)
+        for k, v in user_cfg.items():
+            if k in merged:
+                try:
+                    merged[k] = int(v)
+                except (ValueError, TypeError):
+                    pass
         return merged
     except (IOError, ValueError):
         return dict(_DEFAULT_BOT_CONFIG)

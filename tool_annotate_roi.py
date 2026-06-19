@@ -1,7 +1,8 @@
-import cv2
-import sys
-import numpy as np
 import argparse
+import sys
+
+import cv2
+import numpy as np
 
 
 def main():

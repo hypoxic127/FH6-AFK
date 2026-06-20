@@ -32,7 +32,7 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     10. 重复多次 (D-pad Up 1 次 + A)
     11. 输入 D-pad Left 1 次
     12. 输入 B × 2（退出技能树）
-    确保页面与 usepoints.png 模板画面一致
+    确保已进入技能树升级界面
     """
     log_info(t("upgrade.start"))
     # 宏按键延迟设置，确保 UI 渲染稳定

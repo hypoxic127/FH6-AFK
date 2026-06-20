@@ -175,7 +175,7 @@ class TestDetectSelectedBrandTab:
         assert result is None or isinstance(result, str)
 
     def test_brand_tab_roi_defaults(self) -> None:
-        """默认 ROI 参数应在 0-1 百分比范围内。"""
+        """默认 ROI 参数应在 0.0-1.0 比例范围内。"""
         assert 0.0 <= BRAND_TAB_ROI_Y[0] < BRAND_TAB_ROI_Y[1] <= 1.0
         assert 0.0 <= BRAND_TAB_ROI_X[0] < BRAND_TAB_ROI_X[1] <= 1.0
 

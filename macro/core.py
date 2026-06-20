@@ -140,7 +140,7 @@ def capture_screenshot(hwnd):
 def capture_raw_screenshot(hwnd):
     """
     获取原始分辨率截图（不缩放），专供 OCR 使用。
-    百分比 ROI 在原始图上裁剪，文字保持原始清晰度，
+    比例 ROI 在原始图上裁剪，文字保持原始清晰度，
     不受 2560→1600 缩放导致的模糊影响。
     返回: 原始分辨率 BGR 图像，或 None
     """

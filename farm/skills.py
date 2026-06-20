@@ -8,7 +8,7 @@ FH6_AutoBot EventLab 自动跑图模块 (module_farm_skills.py)
   -> 选车 -> 开始比赛 -> 全程按住 RT 加速 -> 检测终点 -> 重启/退出
 
 核心设计 - 视觉状态机 (Visual State Machine)：
-  使用 StateDetector (OCR + HSV 颜色分析) 对每帧截图进行状态检测，
+  使用 StateDetector (OCR + 亮度分析) 对每帧截图进行状态检测，
   识别当前处于游戏的哪个 UI 状态（菜单标签 / EventLab / 赛道 / 结算画面），
   然后根据状态执行对应的手柄操作。
 

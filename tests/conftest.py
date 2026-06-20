@@ -66,7 +66,7 @@ if platform.system() != "Windows":
     mss_mock.MSS = MagicMock()
     sys.modules["mss"] = mss_mock
 
-# 排除旧版测试脚本（仍使用已删除的 module_macro 导入）
+# 排除涉及 UI 和真实游戏窗口的测试脚本（避免在 CI 中报错）
 collect_ignore_glob = ["tests/test_from_state.py", "tests/test_visualize.py"]
 
 

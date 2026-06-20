@@ -73,7 +73,7 @@ CARD_CROP_W = 284  # 卡片裁剪宽度（像素）— 与实际高亮边框匹�
 CARD_CROP_H = 217  # 卡片裁剪高度（像素）— 与实际高亮边框匹配
 
 # ==========================================
-# 卡片内文字行 ROI（相对于 CARD_CROP 的百分比）
+# 卡片内文字行 ROI（相对于 CARD_CROP 的比例 0.0~1.0）
 # ==========================================
 # 第1行：车名（黑色 #000000，灰度值=0，会跑马灯滚动）
 # 例如 "IMPREZA 22B-STI VERSION"
@@ -511,7 +511,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     本函数使用多策略 OCR + 投票机制来提高识别准确率：
 
     处理流程：
-    1. 根据 2560×1440 参考分辨率的百分比坐标裁剪技能点区域
+    1. 根据 2560×1440 参考分辨率的比例坐标裁剪技能点区域
     2. 灰度化 → Otsu 自适应阈值二值化 → 加边距 → 放大 3 倍
     3. 使用 PSM 7（单行文本模式）识别数字，精度最高
     4. 零技能点保底：如果 PSM 7 返回 0 或无结果，使用无限制 OCR 检测 "No Skill Points Available"
@@ -1001,7 +1001,7 @@ def check_new_tag_only(image: np.ndarray | None, cursor_x: int, cursor_y: int) -
     """
     仅检测 NEW 黄色标签（跳过 OCR 车名校验的轻量版本）。
 
-    使用场景：当模板匹配已给出高分（> 0.95）时，车辆身份已被模板确认，
+    使用场景：当紫底徽章检测已确认是高阶车时，车辆身份已基本确认，
     只需要确认该车是否是尚未加过技能点的"新车"。
 
     检测原理：
@@ -1115,7 +1115,7 @@ def has_cell_below(image: np.ndarray | None, cursor_x: int, cursor_y: int) -> bo
     """
     检测光标下方一行位置是否存在车辆卡片（非空位）。
 
-    使用 CARD_CROP 百分比定位采样区域：
+    使用 CARD_CROP 比例定位采样区域：
     高度 87%-153%、宽度 13%-88%（相对于 CARD_CROP 裁剪区域）。
     该区域覆盖当前卡片下方到下一行卡片的主体部分。
 
@@ -1233,7 +1233,7 @@ def is_empty_slot(image: np.ndarray, cursor_x: int, cursor_y: int) -> bool:
 # 十一、品牌标签栏选中检测（统一版）
 # ==========================================
 
-# 品牌标签栏的默认 ROI（百分比坐标）
+# 品牌标签栏的默认 ROI（比例坐标 0.0~1.0）
 BRAND_TAB_ROI_Y: tuple[float, float] = (0.14, 0.18)
 BRAND_TAB_ROI_X: tuple[float, float] = (0.09, 0.91)
 

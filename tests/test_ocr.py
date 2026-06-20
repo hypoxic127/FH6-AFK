@@ -4,9 +4,6 @@ tests/test_ocr.py — engine/ocr.py 单元测试
 
 覆盖：
   - HSV 颜色常量合法性
-  - IMPREZA_22B_KEYWORDS 关键词匹配逻辑
-  - detect_selected_brand_tab() 暗区检测算法
-  - _ocr_card_text() 预处理管线（合成图像）
   - detect_selected_brand_tab() 暗区检测算法
   - _ocr_card_text() 预处理管线（合成图像）
   - is_empty_slot() 空位检测（合成图像）

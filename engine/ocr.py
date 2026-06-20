@@ -6,11 +6,9 @@ FH6_AutoBot 计算机视觉模块 (module_ocr.py)
 
   1. OCR 文字识别
      - read_skill_points(): 读取技能点数字（多 PSM 投票 + 零技能点保底）
-     - read_text_in_roi(): 通用 ROI 区域 OCR
 
   3. 颜色空间检测
-     - has_green_selection_border(): 检测 Forza 高亮选中的绿色边框
-     - has_green_selection_border_padded(): 带外扩的绿色边框检测
+      - has_green_selection_border_padded(): 带外扩的绿色边框检测
      - find_cursor_position(): 检测 UI 光标（亮黄绿色焦点框）的中心坐标
      - verify_new_target_car(): 双重校验（OCR 车名 + HSV 检测 NEW 黄色标签）
      - check_is_high_class(): 通过紫色 PI 徽章检测 S1/S2 级别车辆
@@ -717,16 +715,12 @@ def has_green_selection_border_padded(
     """
     带外扩边距的绿色选中边框检测（更鲁棒的版本）。
 
-    与 has_green_selection_border 的区别：
-    - 不是在裁剪后的卡片图上检测，而是在原始场景图上检测
-    - 在匹配位置周围额外扩展 pad 像素，覆盖模板裁剪偏移导致的边框遗漏
-    - 更适合 OCR 定位后的二次验证
 
     参数:
-        scene_img: 完整的 1600×900 场景截图
-        crop_x, crop_y: 目标位置的左上角坐标
-        w, h: 目标区域的宽度和高度
-        pad: 外扩边距（默认 30 像素）
+        image: 完整的 1600×900 场景截图
+        box_x, box_y: 目标位置的左上角坐标
+        box_w, box_h: 目标区域的宽度和高度
+        pad: 外扩边距（默认 20 像素）
 
     返回:
         bool: True 表示该区域周围有绿色高亮边框

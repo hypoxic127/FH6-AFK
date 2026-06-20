@@ -37,12 +37,13 @@
 | 👁️ **计算机视觉状态机** | 颜色直方图 + OCR 混合检测，精准识别 10+ 种游戏界面状态 |
 | 🎮 **虚拟手柄控制** | ViGEmBus 模拟 Xbox 360 手柄，原生级输入兼容 |
 | 🖥️ **Web UI 仪表盘** | 毛玻璃风格界面 + 实时日志 + 手机扫码远程监控 |
-| ⏹️ **即时停止** | 线程注入技术，点击停止按钮后 Bot 立即终止 |
+| ⏹️ **安全即时停止** | 协作式检查点让 Bot **立即且干净地**停止（释放手柄、重置截图）；仅当卡在原生调用时才用异步注入兜底 |
 | 🔄 **自动更新** | GitHub Releases 自动检测更新，Web UI 一键更新或 `--update` 命令行更新 |
 | 🛡️ **截图自愈** | BitBlt 失败自动恢复，MSS 实例重置 + 游戏窗口自动置前 |
+| ✅ **启动预检** | 运行前校验 Tesseract 是否可用——缺失时明确提示并退出，而非无限重试死循环 |
 | 🎰 **超级轮盘计数** | 自动统计已执行的加点宏次数 |
 | 📦 **一键打包** | PyInstaller 单文件 `.exe`，无需 Python 环境 |
-| 🧪 **93 个测试用例** | Ruff 代码检查 + Pytest 测试覆盖，GitHub Actions CI |
+| 🧪 **170+ 个测试用例** | Ruff 代码检查 + Pytest 测试覆盖，GitHub Actions CI |
 
 ---
 
@@ -93,7 +94,7 @@
 |:-----|:-----|:-----|:-----|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) | 安装时勾选 "Add to PATH" |
 | **Tesseract OCR** | 5.x | [下载链接](https://github.com/UB-Mannheim/tesseract/releases) | 默认路径安装即可（程序自动检测） |
-| **ViGEmBus** | 最新版 | [下载链接](https://github.com/ViGEm/ViGEmBus/releases) | 安装后需 **重启电脑** |
+| **ViGEmBus** | 最新版 | [下载链接](https://github.com/nefarius/ViGEmBus/releases) | 安装后需 **重启电脑** |
 
 ### 📥 安装步骤
 
@@ -225,7 +226,7 @@ FH6_AutoBot/
 │   ├── FH6AutoBot.spec         #    PyInstaller spec（--onefile）
 │   └── hook_utf8.py            #    运行时钩子（Windows UTF-8 修复）
 │
-├── tests/                      # 🧪 单元测试（93 个用例）
+├── tests/                      # 🧪 单元测试（170+ 个用例）
 ├── tools/                      # 🔧 开发调试工具（不打包）
 │
 ├── .github/workflows/
@@ -256,7 +257,7 @@ python -m ruff format --check .
 | CI 任务 | 触发条件 | 描述 |
 |:--------|:---------|:-----|
 | **Lint** | Push / PR | Ruff 代码检查 + 格式校验 |
-| **Test** | Push / PR | 93 个测试用例（ubuntu-latest） |
+| **Test** | Push / PR | 170+ 个测试用例（ubuntu-latest，已排除硬件测试） |
 | **Release** | `v*` tag | PyInstaller 构建 → GitHub Release 发布（自动同步版本号） |
 
 ---
@@ -270,9 +271,10 @@ python -m ruff format --check .
 
 ### 🔤 OCR 识别策略
 
-- **双 PSM 模式** — PSM 8（单词）+ PSM 7（单行）双模式识别，取位数最多的结果
-- **OTSU 自适应阈值** — 防止单位数被误补零
-- **零技能点保底检测** — 识别 "No Skill Points Available" 文本
+- **12 路投票** — 3 种预处理（Otsu / 自适应 / 固定阈值）× 4 种 PSM 模式（6/7/8/13）= 12 次识别，对出现最多的最长位数结果投票
+- **Otsu + 4 倍放大** — 二值化 + 白色留边 + 4 倍线性放大，最大化小字号数字的识别精度
+- **零技能点保底检测** — 无限制 OCR 识别 "No Skill Points Available" 画面
+- **启动预检** — 启动时校验 Tesseract 可用性，缺失即明确退出，绝不空转重试
 
 ### 🎯 车库网格导航
 
@@ -299,7 +301,13 @@ python -m ruff format --check .
 
 - **BitBlt 失败恢复** — GDI 设备上下文损坏时自动重置 MSS 实例
 - **窗口自动置前** — 截图失败后将游戏窗口拉回前台
-- **Web UI 停止/启动安全** — 停止 Bot 时重置 MSS，防止句柄泄漏
+- **优雅停止** — 停止时释放手柄并重置 MSS；收尾期间的截图失败被静默处理（不再刷 `ERROR` 假错误日志）
+
+### ⏹️ 停止机制
+
+- **协作式优先** — 共享停止标志在安全点被检查（每次按键前、可中断等待、状态机每个 tick），Bot 总在干净的边界停止——绝不会卡在按键中途、留下按住不放的按钮
+- **注入式兜底** — 仅当 worker 阻塞在原生调用内（如 Tesseract 子进程）时才用异步异常注入；Web UI 立即响应，由后台任务完成宽限等待 + 兜底注入
+- **基于 `BaseException` 的信号** — 停止异常继承自 `BaseException`，宽泛的 `except Exception` 不会误吞停止请求
 
 ---
 

@@ -37,12 +37,13 @@
 | 👁️ **Computer Vision State Machine** | Color histogram + OCR hybrid detection, identifies 10+ game UI states |
 | 🎮 **Virtual Gamepad** | ViGEmBus simulates Xbox 360 controller, native-level input |
 | 🖥️ **Web UI Dashboard** | Glassmorphism UI + real-time logs + QR code mobile monitoring |
-| ⏹️ **Instant Stop** | Thread injection technology, bot stops immediately on button click |
+| ⏹️ **Safe Instant Stop** | Cooperative checkpoints stop the bot instantly **and** cleanly (gamepad released, capture reset); async-injection only as a fallback when a native call is blocking |
 | 🔄 **Auto-Update** | GitHub Releases auto-update with multi-mirror download, one-click update via Web UI or `--update` flag |
 | 🛡️ **Self-Healing Capture** | BitBlt failure auto-recovery with MSS reset + window re-foreground |
+| ✅ **Startup Pre-Flight** | Verifies Tesseract is available before running — clear exit message instead of an infinite retry loop |
 | 🎰 **Super Wheelspin Counter** | Automatically tracks upgrade macro executions |
 | 📦 **One-Click Build** | PyInstaller single-file `.exe`, no Python required |
-| 🧪 **93 Test Cases** | Ruff linting + Pytest coverage, GitHub Actions CI |
+| 🧪 **170+ Test Cases** | Ruff linting + Pytest coverage, GitHub Actions CI |
 
 ---
 
@@ -93,7 +94,7 @@
 |:---------|:--------|:---------|:------|
 | **Python** | 3.10+ | [python.org](https://www.python.org/downloads/) | Check "Add to PATH" during install |
 | **Tesseract OCR** | 5.x | [Download](https://github.com/UB-Mannheim/tesseract/releases) | Install to default location (auto-detected) |
-| **ViGEmBus** | Latest | [Download](https://github.com/ViGEm/ViGEmBus/releases) | **Reboot required** after install |
+| **ViGEmBus** | Latest | [Download](https://github.com/nefarius/ViGEmBus/releases) | **Reboot required** after install |
 
 ### 📥 Installation
 
@@ -225,7 +226,7 @@ FH6_AutoBot/
 │   ├── FH6AutoBot.spec         #    PyInstaller spec (--onefile)
 │   └── hook_utf8.py            #    Runtime hook (Windows UTF-8 fix)
 │
-├── tests/                      # 🧪 Unit Tests (93 cases)
+├── tests/                      # 🧪 Unit Tests (170+ cases)
 ├── tools/                      # 🔧 Dev utilities (not packaged)
 │
 ├── .github/workflows/
@@ -256,7 +257,7 @@ python -m ruff format --check .
 | CI Job | Trigger | Description |
 |:-------|:--------|:------------|
 | **Lint** | Push / PR | Ruff lint + format validation |
-| **Test** | Push / PR | 93 test cases (ubuntu-latest) |
+| **Test** | Push / PR | 170+ test cases (ubuntu-latest, hardware tests excluded) |
 | **Release** | `v*` tag | PyInstaller build → GitHub Release (auto-sync version) |
 
 ---
@@ -270,9 +271,10 @@ python -m ruff format --check .
 
 ### 🔤 OCR Strategy
 
-- **Dual PSM Mode** — Uses PSM 8 (single word) + PSM 7 (single line), picks the result with most digits
-- **OTSU Adaptive Thresholding** — Prevents single-digit zero-padding errors
-- **Zero Skill Points Fallback** — Detects "No Skill Points Available" text
+- **12-Pass Voting** — 3 preprocessing variants (Otsu / adaptive / fixed threshold) × 4 PSM modes (6/7/8/13) = 12 reads, votes on the most frequent longest-digit result
+- **Otsu + 4× Upscale** — Binarization, white padding, and 4× linear upscale maximize small-digit accuracy
+- **Zero Skill Points Fallback** — Unrestricted OCR detects the "No Skill Points Available" screen
+- **Startup Pre-Flight** — Tesseract availability is verified at launch; missing OCR exits cleanly instead of looping
 
 ### 🎯 Garage Grid Navigation
 
@@ -299,7 +301,13 @@ python -m ruff format --check .
 
 - **BitBlt Failure Recovery** — Auto-resets MSS instance when GDI device context is corrupted
 - **Window Re-Foreground** — Pulls game window back to front after capture failure
-- **Web UI Stop/Start Safe** — MSS reset on bot stop prevents stale handle leaks
+- **Graceful Stop** — Stopping releases the gamepad and resets MSS; capture errors during teardown are silenced (no false `ERROR` log spam)
+
+### ⏹️ Stop Mechanism
+
+- **Cooperative-First** — A shared stop flag is checked at safe points (before every button press, interruptible waits, each state-machine tick), so the bot stops at a clean boundary — never mid-keypress with a button left held
+- **Injection Fallback** — Async exception injection is used only when the worker is blocked inside a native call (e.g. Tesseract subprocess); the Web UI replies instantly and a background task handles the grace-join + fallback
+- **`BaseException`-based Signal** — The stop exception subclasses `BaseException`, so broad `except Exception` handlers can't accidentally swallow a stop request
 
 ---
 

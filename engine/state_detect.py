@@ -40,7 +40,7 @@ class StateDetector:
     """
     无模板视觉状态检测器。
 
-    使用像素/颜色分析 + OCR 混合方案替代模板匹配。
+    使用像素亮度分析 + OCR 混合方案替代模板匹配。
     支持两种调用模式:
       - detect(resized, mode="menu")  — 完整菜单状态检测
       - detect(resized, mode="racing") — 快速比赛状态检测
@@ -179,13 +179,13 @@ class StateDetector:
         return "UNKNOWN"
 
     # ===================================================================
-    #  B1. 导航子页面检测 (OCR + 直方图)
+    #  B1. 导航子页面检测 (OCR + 亮度分析)
     # ===================================================================
 
     def _detect_navigation(self, resized, h, w):
         """
         检测当前处于哪个导航子页面。
-        使用 OCR 关键字匹配 + 直方图辅助。
+        使用 OCR 关键字匹配 + 亮度辅助。
         """
         # 读取左上角通用标题区域：h8-16%, w4-30%
         header_roi = resized[int(h * 0.08) : int(h * 0.16), int(w * 0.04) : int(w * 0.30)]
@@ -279,7 +279,7 @@ class StateDetector:
             submenu_kws = ["featured", "popular", "new", "favorite", "creator", "best", "trend", "my fav"]
             if any(kw in text for kw in submenu_kws):
                 # 检查 MY_FAVORITES 是否为当前激活标签
-                # 激活标签颜色更深/不同，用直方图或亮度区分
+                # 激活标签颜色更深/不同，用亮度区分
                 return "EVENTS_SUBMENU"
 
         return None
@@ -292,11 +292,10 @@ class StateDetector:
         """
         检测主菜单哪个标签被选中。
         策略：选中标签的亮度/颜色与未选中不同。
-              分析标签栏每个区域的直方图特征。
+              分析标签栏每个区域的亮度特征。
 
         使用方式:
-          - 有参考数据时：比较直方图
-          - 无参考数据时：分析亮度差异（选中标签通常更暗/更亮）
+          - 分析亮度差异（选中标签通常更暗/更亮）
         """
         _, tw = tab_roi.shape[:2]
 
@@ -323,7 +322,6 @@ class StateDetector:
         if max_diff > 15 and active_tab:
             return active_tab
 
-        # 如有参考数据，用直方图比较
         if self.tab_ref_brightness:
             best_tab, best_diff = None, 999
             for tab_name, ref_vals in self.tab_ref_brightness.items():

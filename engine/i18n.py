@@ -105,8 +105,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "zh": "   (需先访问 CARS 标签页扫描技能点)",
     },
     "farm.detector_init": {
-        "en": "StateDetector initialized (Color Histogram + OCR hybrid)",
-        "zh": "StateDetector 已初始化 (颜色直方图 + OCR 混合模式)",
+        "en": "StateDetector initialized (Brightness Analysis + OCR hybrid)",
+        "zh": "StateDetector 已初始化 (亮度分析 + OCR 混合模式)",
     },
     "farm.window_found": {
         "en": "Forza Horizon 6 game window detected.",

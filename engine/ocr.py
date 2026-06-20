@@ -1062,11 +1062,13 @@ def check_is_high_class(image: np.ndarray | None, cursor_x: int, cursor_y: int) 
         bool: True 表示是高级别车（应跳过），False 表示是 B 级车
     """
     if image is None or image.size == 0:
-        return False
+        # 失败安全：图像缺失时按“高级别/保留”处理，避免误删主力车
+        return True
     try:
         card = crop_card_roi(image, cursor_x, cursor_y)
         if card is None:
-            return False
+            # 失败安全：卡片裁剪失败时按“高级别/保留”处理，避免误删主力车
+            return True
 
         card_h, card_w = card.shape[:2]
         # PI 徽章: 卡片高度 82%-94%、宽度 71%-96% 区域
@@ -1098,7 +1100,8 @@ def check_is_high_class(image: np.ndarray | None, cursor_x: int, cursor_y: int) 
         return True
     except Exception as e:
         log_error(t("ocr.pi_error", err=e))
-    return False
+    # 失败安全：检测异常时按“高级别/保留”处理（与上方 ambiguous 兜底一致），避免误删主力车
+    return True
 
 
 # ==========================================

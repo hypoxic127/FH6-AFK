@@ -142,3 +142,25 @@ class TestEdge5PiDetectionConservative:
         result: bool = check_is_high_class(black_image, 800, 450)
 
         assert result is True, "EDGE-5: check_is_high_class 在颜色不明确时返回 False，可能导致误删 S2 主力车"
+
+    def test_none_image_returns_true(self) -> None:
+        """H4: 图像为 None 时应失败安全返回 True（保留），而非 False（可删）。"""
+        from engine.ocr import check_is_high_class
+
+        assert check_is_high_class(None, 800, 450) is True
+
+    def test_crop_none_returns_true(self) -> None:
+        """H4: 卡片裁剪失败 (crop_card_roi 返回 None) 时应失败安全返回 True。"""
+        from engine.ocr import check_is_high_class
+
+        with patch("engine.ocr.crop_card_roi", return_value=None):
+            black_image: np.ndarray = np.zeros((900, 1600, 3), dtype=np.uint8)
+            assert check_is_high_class(black_image, 800, 450) is True
+
+    def test_exception_returns_true(self) -> None:
+        """H4: PI 检测过程中抛异常时应失败安全返回 True（保留主力车），而非 False（误删）。"""
+        from engine.ocr import check_is_high_class
+
+        with patch("engine.ocr.crop_card_roi", side_effect=RuntimeError("boom")):
+            black_image: np.ndarray = np.zeros((900, 1600, 3), dtype=np.uint8)
+            assert check_is_high_class(black_image, 800, 450) is True

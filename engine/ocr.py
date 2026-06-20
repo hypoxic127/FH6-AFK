@@ -1112,68 +1112,6 @@ def check_is_high_class(image: np.ndarray | None, cursor_x: int, cursor_y: int) 
 # ==========================================
 
 
-def read_text_in_roi(
-    image: np.ndarray | None,
-    x1: int,
-    y1: int,
-    x2: int,
-    y2: int,
-    whitelist: str | None = None,
-) -> str:
-    """
-    在指定的 ROI（Region of Interest）矩形区域内执行 OCR 文字识别。
-
-    处理流程：
-    1. 根据坐标裁剪 ROI 区域
-    2. 放大 3 倍以提升小字体识别率
-    3. 转灰度（不做二值化，保留更多细节）
-    4. 使用 PSM 7（单行文本模式）识别
-
-    参数:
-        image: 1600×900 BGR 格式截图
-        x1, y1, x2, y2: ROI 矩形区域的坐标
-        whitelist: 可选，OCR 字符白名单（如 "0123456789" 只识别数字）
-
-    返回:
-        str: 小写化的 OCR 识别文本，失败时返回空字符串
-    """
-    if image is None or image.size == 0:
-        return ""
-    try:
-        h, w, _ = image.shape
-        # 确保坐标在有效范围内
-        rx1 = max(0, int(x1))
-        rx2 = min(w, int(x2))
-        ry1 = max(0, int(y1))
-        ry2 = min(h, int(y2))
-
-        roi = image[ry1:ry2, rx1:rx2]
-        if roi.size == 0:
-            return ""
-
-        # 保存调试原图（仅在调试模式下）
-        if DEBUG_WRITE_FILES:
-            cv2.imwrite("debug_ocr_raw.png", roi)
-
-        # 图像预处理：放大 3 倍 → 灰度化
-        resized_roi = cv2.resize(roi, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-        gray = cv2.cvtColor(resized_roi, cv2.COLOR_BGR2GRAY)
-
-        if DEBUG_WRITE_FILES:
-            cv2.imwrite("debug_ocr_processed.png", gray)
-
-        # OCR 识别配置
-        config_str = "--psm 7"  # 单行文本模式
-        if whitelist is not None:
-            config_str += f" -c tessedit_char_whitelist={whitelist}"
-
-        text = pytesseract.image_to_string(gray, config=config_str).strip().lower()
-        return text
-    except Exception as e:
-        log_error(t("ocr.roi_error", err=e))
-    return ""
-
-
 # ==========================================
 # 九、车库网格空位检测
 # ==========================================

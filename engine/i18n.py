@@ -31,11 +31,6 @@ def set_lang(lang: str) -> None:
     _lang = lang
 
 
-def get_lang() -> str:
-    """Return the current language code."""
-    return _lang
-
-
 def t(key: str, **kwargs) -> str:
     """Look up a translated string and apply ``str.format(**kwargs)``.
 
@@ -1350,10 +1345,6 @@ _STRINGS: dict[str, dict[str, str]] = {
     # ------------------------------------------------------------------
     # OCR additional logs (engine/ocr.py)
     # ------------------------------------------------------------------
-    "ocr.roi_error": {
-        "en": "read_text_in_roi OCR error: {err}",
-        "zh": "read_text_in_roi OCR 识别出错: {err}",
-    },
     "ocr.grid_oob": {
         "en": "[GRID] Below area out of bounds (sy1={sy1}, h={h})",
         "zh": "[GRID] 下方超出画面边界 (sy1={sy1}, h={h})",

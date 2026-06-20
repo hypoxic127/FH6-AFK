@@ -108,7 +108,6 @@ class TestBP3TypeHints:
             "verify_new_target_car",
             "has_green_selection_border_padded",
             "has_cell_below",
-            "read_text_in_roi",
             "crop_card_roi",
         ],
     )

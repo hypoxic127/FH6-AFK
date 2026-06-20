@@ -244,7 +244,6 @@ class FarmStateMachine:
         self.matches_needed: int = 0
         self.matches_completed: int = 0
         self.unknown_consecutive_count: int = 0
-        self.last_points: int | None = None
 
         # 时间控制
         self.racing_print_timer: float = 0
@@ -324,7 +323,7 @@ class FarmStateMachine:
     def _handle_rate_popup(self, resized: np.ndarray) -> bool:
         """检测并关闭 Rate Event 弹窗。返回 True 表示已处理。"""
         try:
-            h_frame, w_frame = resized.shape[:2]
+            h_frame = resized.shape[0]
             banner_roi = resized[0 : int(h_frame * 0.15), :]
             hsv_banner = cv2.cvtColor(banner_roi, cv2.COLOR_BGR2HSV)
             ygmask = cv2.inRange(hsv_banner, np.array([25, 150, 200]), np.array([45, 255, 255]))
@@ -583,7 +582,6 @@ class FarmStateMachine:
             safe_print(t("farm.scan_ok_points", pts=detected_points))
             safe_print(t("farm.scan_ok_needed", count=self.matches_needed))
             safe_print("==========================================\n")
-            self.last_points = detected_points
             self.points_scanned = True
             save_race_state(self.matches_needed, self.matches_completed)
 
@@ -606,7 +604,6 @@ class FarmStateMachine:
                     )
                     # 假装读取到0点
                     self.matches_needed = get_matches_needed(0)
-                    self.last_points = 0
                     self.points_scanned = True
                     save_race_state(self.matches_needed, self.matches_completed)
                     safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")

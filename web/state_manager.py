@@ -100,11 +100,6 @@ class StateManager:
         with self._lock:
             return list(self._logs)[-count:]
 
-    def clear_logs(self) -> None:
-        """清空日志历史。"""
-        with self._lock:
-            self._logs.clear()
-
 
 # ==========================================
 # 全局单例

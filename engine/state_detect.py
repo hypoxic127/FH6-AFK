@@ -36,19 +36,6 @@ TAB_ZONES = {
 }
 
 
-def compute_hist(roi_bgr, bins=(18, 16)):
-    """计算 ROI 的 HSV 颜色直方图（归一化）。"""
-    hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
-    hist = cv2.calcHist([hsv], [0, 1], None, list(bins), [0, 180, 0, 256])
-    cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
-    return hist
-
-
-def compare_hists(hist1, hist2):
-    """比较两个直方图，返回相关性分数 (-1 到 1)。"""
-    return cv2.compareHist(hist1.astype(np.float32), hist2.astype(np.float32), cv2.HISTCMP_CORREL)
-
-
 class StateDetector:
     """
     无模板视觉状态检测器。
@@ -60,7 +47,6 @@ class StateDetector:
     """
 
     def __init__(self) -> None:
-        self.ref_hists: dict = {}
         self.tab_ref_brightness: dict = {}
 
     # ===================================================================
@@ -312,7 +298,7 @@ class StateDetector:
           - 有参考数据时：比较直方图
           - 无参考数据时：分析亮度差异（选中标签通常更暗/更亮）
         """
-        th, tw = tab_roi.shape[:2]
+        _, tw = tab_roi.shape[:2]
 
         # 为每个标签区域计算亮度
         zone_brightness = {}

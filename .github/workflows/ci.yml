@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# 同一分支/PR 上的新提交会取消仍在运行的旧 CI，节省 Actions 配额
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint (Ruff)
@@ -20,14 +25,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
-      - name: Force LF line endings
-        run: |
-          git config core.autocrlf false
-          git config core.eol lf
-          git rm --cached -r . > /dev/null 2>&1
-          git reset HEAD -- . > /dev/null 2>&1
-          git checkout -- .
+      # 行尾无需在此强制：.gitattributes 已声明 `* text=auto eol=lf`，
+      # checkout 在 Linux 上即为 LF，ruff format 检查直接通过。
 
       - name: Install Ruff
         run: pip install ruff==0.15.15
@@ -49,6 +50,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install Tesseract OCR
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
@@ -57,7 +59,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest>=8.0.0
+          pip install "pytest>=8.0.0"
 
       - name: Run unit tests
         run: pytest -v --tb=short -m "not hardware"

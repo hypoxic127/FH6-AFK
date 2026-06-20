@@ -5,6 +5,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 *.egg-info/
 dist/
 build/
@@ -51,6 +54,12 @@ debug_*.png
 current_roi_*.png
 live_roi_*.png
 
+# 覆盖率工具产物
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # ==========================================
 # 测试目录 — 现已纳入 CI，不再排除
 # ==========================================
@@ -67,6 +76,7 @@ pytest.ini
 
 # ==========================================
 # 开发工具 & 旧版测试脚本（本地辅助，不随项目分发）
+# 同时覆盖本地工具链（Tesseract 安装包等）放在 tools/ 下的产物，仅保留 *.py
 # ==========================================
 tools/*
 !tools/*.py
@@ -81,12 +91,6 @@ play_archive.txt
 play_archive.jsonl
 race_state.json
 state_references.json
-
-# ==========================================
-# 本地工具链（Tesseract 安装包等）
-# ==========================================
-tools/*
-!tools/*.py
 
 # ==========================================
 # 旧模板目录（已弃用，改用 HSV + OCR 无模板检测）

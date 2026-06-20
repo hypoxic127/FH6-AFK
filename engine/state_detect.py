@@ -18,13 +18,13 @@ import pytesseract
 
 from engine.utils import log_info, log_success, log_warning
 
-# ========== 常量：ROI 位置 (百分比) ==========
+# ========== 常量：ROI 位置 (比例 0.0~1.0) ==========
 
-# 主菜单标签栏 (用户标注: h19-23%, w26-74%)
+# 主菜单标签栏 (用户标注: 高度比例 0.19~0.23, 宽度比例 0.26~0.74)
 TAB_BAR_Y = (0.19, 0.23)
 TAB_BAR_X = (0.26, 0.74)
 
-# 6 个标签的水平采样区域 (在标签栏 ROI 内的相对 x%)
+# 6 个标签的水平采样区域 (在标签栏 ROI 内的相对宽度比例 0.0~1.0)
 # 标签从左到右: CAMPAIGN, CARS, MY HORIZON, ONLINE, CREATIVE HUB, STORE
 TAB_ZONES = {
     "CAMPAIGN": (0.00, 0.13),
@@ -42,12 +42,12 @@ class StateDetector:
 
     使用像素亮度分析 + OCR 混合方案替代模板匹配。
     支持两种调用模式:
-      - detect(resized, mode="menu")  — 完整菜单状态检测
+      - detect(resized, mode="menu")  — 全面状态检测 (含比赛和菜单)
       - detect(resized, mode="racing") — 快速比赛状态检测
     """
 
     def __init__(self) -> None:
-        self.tab_ref_brightness: dict = {}
+        pass
 
     # ===================================================================
     #  主入口
@@ -321,16 +321,6 @@ class StateDetector:
         # 需要足够的差异才确认（阈值：至少偏差 15）
         if max_diff > 15 and active_tab:
             return active_tab
-
-        if self.tab_ref_brightness:
-            best_tab, best_diff = None, 999
-            for tab_name, ref_vals in self.tab_ref_brightness.items():
-                diff = sum(abs(zone_brightness.get(k, 0) - ref_vals.get(k, 0)) for k in TAB_ZONES.keys())
-                if diff < best_diff:
-                    best_diff = diff
-                    best_tab = tab_name
-            if best_tab and best_diff < 200:
-                return best_tab
 
         return None
 

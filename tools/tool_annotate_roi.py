@@ -14,8 +14,8 @@ Controls:
   Q / ESC  = quit
 """
 
-import sys
 import os
+import sys
 import time
 
 # Fix encoding before any output
@@ -33,9 +33,9 @@ import cv2
 import numpy as np
 import pytesseract
 
+from engine import ocr as module_ocr
 from engine.utils import find_game_window
 from macro.core import capture_screenshot, force_foreground
-from engine import ocr as module_ocr
 
 # Global state
 drawing: bool = False
@@ -95,7 +95,7 @@ def print_rect_info(rect: tuple[int, int, int, int], idx: int) -> None:
     print(f"{'=' * 60}")
 
     # Full-screen %
-    print(f"\n  --- FULL SCREEN % (for raw_img / resized) ---")
+    print("\n  --- FULL SCREEN % (for raw_img / resized) ---")
     print(f"  Height: {fs_y1:.4f} -> {fs_y2:.4f}   (h*{fs_y1:.4f} : h*{fs_y2:.4f})")
     print(f"  Width:  {fs_x1:.4f} -> {fs_x2:.4f}   (w*{fs_x1:.4f} : w*{fs_x2:.4f})")
     print(f"  Code:  roi = image[int(h*{fs_y1:.4f}):int(h*{fs_y2:.4f}), int(w*{fs_x1:.4f}):int(w*{fs_x2:.4f})]")
@@ -256,8 +256,8 @@ def main() -> None:
     global all_rects, current_rect
 
     print(f"\n{'=' * 50}")
-    print(f"   ROI Annotation Tool v3")
-    print(f"   Drag=draw  O=OCR  R=reset  S=refresh  Q=quit")
+    print("   ROI Annotation Tool v3")
+    print("   Drag=draw  O=OCR  R=reset  S=refresh  Q=quit")
     print(f"{'=' * 50}\n")
 
     hwnd = find_game_window()

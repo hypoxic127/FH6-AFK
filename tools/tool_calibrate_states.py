@@ -12,9 +12,10 @@ tool_calibrate_states.py — 状态检测校准工具
 校准完成后数据保存到 state_references.json
 """
 
-import sys
 import os
+import sys
 import time
+
 import cv2
 import numpy as np
 
@@ -26,7 +27,7 @@ if sys.stdout.encoding != "utf-8":
         pass
 
 import module_macro
-from module_state_detect import StateDetector, NAV_PAGES, RACING_ROIS, TAB_ZONES
+from module_state_detect import NAV_PAGES, RACING_ROIS, TAB_ZONES, StateDetector
 
 ALL_STATES = {
     # 主菜单标签 (需要在对应标签页激活时校准)
@@ -114,7 +115,7 @@ def interactive_mode():
 def calibrate_single(detector, state_name, desc):
     """校准单个状态。"""
     print(f"\n  → 准备校准: {state_name} ({desc})")
-    print(f"  → 请将游戏切换到该界面，然后按 Enter...")
+    print("  → 请将游戏切换到该界面，然后按 Enter...")
     try:
         input()
     except (EOFError, KeyboardInterrupt):
@@ -148,7 +149,7 @@ def calibrate_all(detector, state_list):
 
     for i, (state_name, desc) in enumerate(state_list, 1):
         print(f"\n  [{i}/{len(state_list)}] {state_name}: {desc}")
-        print(f"  → 请将游戏切换到该界面，然后按 Enter (s=跳过)...")
+        print("  → 请将游戏切换到该界面，然后按 Enter (s=跳过)...")
         try:
             resp = input().strip().lower()
         except (EOFError, KeyboardInterrupt):
@@ -195,18 +196,18 @@ def test_detection(detector):
     state_racing = detector.detect(resized, mode="racing")
     t_racing = (time.time() - t0) * 1000
 
-    print(f"\n  ┌─ 检测结果 ─────────────────────")
+    print("\n  ┌─ 检测结果 ─────────────────────")
     print(f"  │  Menu 模式:   {state}  ({t_menu:.0f}ms)")
     print(f"  │  Racing 模式: {state_racing or 'None'}  ({t_racing:.0f}ms)")
 
     # 显示标签栏亮度
-    from module_state_detect import TAB_BAR_Y, TAB_BAR_X, TAB_ZONES
+    from module_state_detect import TAB_BAR_X, TAB_BAR_Y
 
     tab_roi = resized[int(h * TAB_BAR_Y[0]) : int(h * TAB_BAR_Y[1]), int(w * TAB_BAR_X[0]) : int(w * TAB_BAR_X[1])]
     tab_gray = cv2.cvtColor(tab_roi, cv2.COLOR_BGR2GRAY)
     th, tw = tab_gray.shape[:2]
-    print(f"  │")
-    print(f"  │  标签栏亮度:")
+    print("  │")
+    print("  │  标签栏亮度:")
     for tab_name, (x1, x2) in TAB_ZONES.items():
         zone = tab_gray[:, int(tw * x1) : int(tw * x2)]
         b = float(np.mean(zone))
@@ -214,9 +215,9 @@ def test_detection(detector):
 
     # 显示目标车辆检测
     is_target = detector.detect_target_car(resized)
-    print(f"  │")
+    print("  │")
     print(f"  │  目标车辆: {'✅ Subaru Impreza 22B-STI' if is_target else '❌ 不匹配'}")
-    print(f"  └──────────────────────────────\n")
+    print("  └──────────────────────────────\n")
 
     # 保存测试截图
     os.makedirs("debug", exist_ok=True)
@@ -233,7 +234,7 @@ def single_state_mode(state_name):
     detector = StateDetector()
     desc = ALL_STATES[state_name]
     print(f"\n  → 校准: {state_name} ({desc})")
-    print(f"  → 3 秒后截图...")
+    print("  → 3 秒后截图...")
     time.sleep(3)
 
     resized = capture_game_screenshot()

@@ -5,8 +5,9 @@ Loads a screenshot, draws the skill points crop zone, processes it, and saves de
 """
 
 import argparse
-import sys
 import os
+import sys
+
 import cv2
 import numpy as np
 

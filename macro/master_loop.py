@@ -16,6 +16,7 @@ import engine.ocr as module_ocr
 from engine.event_bus import get_bus
 from engine.i18n import t
 from engine.utils import log_error, log_info, log_success, log_warning
+from farm.skills import archive_upgrade_to_file
 from macro.core import (
     MAX_SKILL_POINTS,
     STATE_BUY_CARS,
@@ -49,7 +50,6 @@ from macro.purchase import (
     navigate_to_impreza_purchase_screen,
 )
 from macro.upgrade import action_upgrade_car_skills
-from farm.skills import archive_upgrade_to_file
 
 # 全局停止事件，由 Web UI 的 stop_bot 处理器设置
 _stop_event: threading.Event = threading.Event()

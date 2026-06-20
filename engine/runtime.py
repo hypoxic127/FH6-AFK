@@ -11,6 +11,7 @@ PyInstaller 打包后，`__file__` 指向临时解压目录（`sys._MEIPASS`）�
 
 import os
 import sys
+from typing import Any
 
 
 def get_base_dir() -> str:
@@ -57,8 +58,6 @@ def get_data_dir() -> str:
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
-
-from typing import Any
 
 _DEFAULT_BOT_CONFIG: dict[str, Any] = {
     "points_per_match": 10,

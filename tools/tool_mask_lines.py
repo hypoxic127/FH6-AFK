@@ -11,7 +11,9 @@ Controls:
   Q / ESC      = Quit and print final values
 """
 
-import sys, os, time
+import os
+import sys
+import time
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 if sys.stdout.encoding != "utf-8":
@@ -21,8 +23,8 @@ if sys.stdout.encoding != "utf-8":
         pass
 
 import cv2
-import numpy as np
 import module_macro
+import numpy as np
 
 # Global state
 base_image = None
@@ -133,12 +135,12 @@ def main():
     if v_lines:
         vx = v_lines[-1]
         pct = vx / img_w
-        print(f"\n  # Left panel mask (last V-line)")
+        print("\n  # Left panel mask (last V-line)")
         print(f"  mask[:, :int(img_w * {pct:.2f})] = 0    # X={vx}px")
     if h_lines:
         hy = h_lines[-1]
         pct = hy / img_h
-        print(f"\n  # Top bar mask (last H-line)")
+        print("\n  # Top bar mask (last H-line)")
         print(f"  mask[:int(img_h * {pct:.2f}), :] = 0    # Y={hy}px")
     if not v_lines and not h_lines:
         print("\n  No lines placed.")

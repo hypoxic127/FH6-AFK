@@ -5,8 +5,9 @@ Loads sample screenshot and outputs cropped preview.
 """
 
 import os
-import sys
 import shutil
+import sys
+
 import cv2
 import numpy as np
 

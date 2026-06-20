@@ -5,8 +5,9 @@ Captures the live game window, crops the skill points ROI, and saves preview.
 """
 
 import os
-import sys
 import shutil
+import sys
+
 import cv2
 import numpy as np
 
@@ -15,7 +16,7 @@ ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from engine.utils import find_game_window, get_client_rect, get_mss
+from engine.utils import find_game_window, get_client_rect, get_mss  # noqa: E402
 
 
 def capture_live() -> None:

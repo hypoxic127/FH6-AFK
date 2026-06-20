@@ -233,10 +233,17 @@ def press_button(gamepad, button, delay=0.5):
         button:  vgamepad 按钮常量（如 XUSB_GAMEPAD_A, XUSB_GAMEPAD_B 等）
         delay:   释放按钮后的等待时间（秒），默认 0.5 秒，
                  较长的 delay 用于等待游戏界面过渡动画完成
+
+    协作式停止：作为几乎所有手柄动作的唯一出口，本函数在按下任何键之前先 check_stop()
+    （安全点，绝不会留下卡住的按键）；按键释放后的 delay 用 interruptible_sleep 等待，
+    使停止信号能在 ~一个按键间隔内被响应。
     """
+    from engine.control import check_stop, interruptible_sleep
+
+    check_stop()  # 按键前的安全停止点（此时无按键处于按下状态）
     gamepad.press_button(button=button)
     gamepad.update()
     time.sleep(0.15)  # 按键最短保持时间
     gamepad.release_button(button=button)
     gamepad.update()
-    time.sleep(delay)  # 按键后等待 UI 响应
+    interruptible_sleep(delay)  # 按键后等待 UI 响应（可被停止信号立即唤醒）

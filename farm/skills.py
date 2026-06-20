@@ -35,6 +35,7 @@ import vgamepad as vg
 from colorama import Fore, Style
 
 import engine.ocr as module_ocr
+from engine.control import check_stop, interruptible_sleep
 from engine.i18n import t
 from engine.ocr import DEBUG_WRITE_FILES
 from engine.state_detect import get_detector
@@ -237,6 +238,7 @@ class FarmStateMachine:
         self.waiting_for_next: bool = False
         self.waiting_for_gameplay: bool = False
         self._wait_next_start: float = 0.0  # 进入 waiting_for_next 的时间戳
+        self._wait_next_debug_saved: bool = False  # 本次等待是否已存过卡死调试图
         self.points_scanned: bool = False
         self.ocr_fail_count: int = 0
 
@@ -300,6 +302,20 @@ class FarmStateMachine:
             resized = cv2.resize(img, (1600, 900), interpolation=cv2.INTER_AREA)
             return resized, img
         except Exception as e:
+            # 停止信号原样抛出（尽快终止，不打日志）
+            from macro.master_loop import BotStoppedError, is_stop_requested
+
+            if isinstance(e, BotStoppedError):
+                raise
+            # 手动停止/teardown 期间的截图失败属预期 → 静默，且跳过抢焦点的自恢复
+            if is_stop_requested():
+                try:
+                    from engine.utils import reset_mss
+
+                    reset_mss()
+                except Exception:
+                    pass
+                return None, None
             log_error(t("farm.capture_fail", err=e))
             # Auto-recovery: reset MSS instance and re-foreground the window
             # BitBlt failure corrupts the GDI DC; a fresh MSS instance fixes it
@@ -382,22 +398,24 @@ class FarmStateMachine:
         if remaining_matches > 0:
             log_success(t("farm.restart_race", remain=remaining_matches))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_X, delay=0)
-            time.sleep(1.0)
+            interruptible_sleep(1.0)
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
             self.is_racing = False
             self.entering_race = True  # 防止过渡画面误识别为菜单标签（如 STORE）触发 RB
-            time.sleep(3.0)
+            interruptible_sleep(3.0)
         else:
             log_success(t("farm.all_done", count=self.matches_completed))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
             self.is_racing = False
             self.waiting_for_next = True
             self._wait_next_start = time.time()
+            self._wait_next_debug_saved = False
             log_info(t("farm.wait_next"))
 
     _WAIT_NEXT_TIMEOUT: float = 20.0  # 超时阈值（秒）
     _WAIT_NEXT_RETRY_INTERVAL: float = 5.0  # 超时后重试按 A 间隔
     _WAIT_NEXT_FORCE_EXIT: float = 60.0  # 强制退出阈值
+    _WAIT_NEXT_DEBUG_SNAPSHOT: float = 30.0  # 卡死超此秒数则自动存一次全屏图供排查
 
     def _handle_waiting_next(self, resized: np.ndarray) -> None:
         """Wait for the 'What's Next' screen after reward animation.
@@ -409,6 +427,12 @@ class FarmStateMachine:
         - After 60s → force exit to waiting_for_gameplay.
         """
         elapsed = time.time() - self._wait_next_start
+
+        # 卡死自动存图：超阈值仍未识别到 Next 画面时，保存一张全屏原图供排查（每次等待只存一次）
+        if elapsed > self._WAIT_NEXT_DEBUG_SNAPSHOT and not self._wait_next_debug_saved:
+            self._wait_next_debug_saved = True
+            self._save_stuck_snapshot()
+
         next_state = self.detector.detect(resized, mode="racing")
 
         # 正常路径：检测到 NEXT_SCREEN
@@ -426,7 +450,7 @@ class FarmStateMachine:
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=0)
             self.waiting_for_next = False
             self.waiting_for_gameplay = False
-            time.sleep(2.5)
+            interruptible_sleep(2.5)
             # 走后续菜单状态机逻辑
             if self.matches_needed <= 0:
                 clear_race_state()
@@ -457,6 +481,25 @@ class FarmStateMachine:
 
         time.sleep(0.2)
 
+    def _save_stuck_snapshot(self) -> None:
+        """卡在 'Next' 结算画面超时时，保存一张全屏原图到 data/debug/，便于收集用户报错图。"""
+        try:
+            from engine.runtime import get_data_dir
+            from macro.core import capture_raw_screenshot
+
+            img = capture_raw_screenshot(self.hwnd)
+            if img is None or img.size == 0:
+                log_warning(t("farm.next_stuck_capture_fail"))
+                return
+            debug_dir = os.path.join(get_data_dir(), "debug")
+            os.makedirs(debug_dir, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = os.path.join(debug_dir, f"next_stuck_{ts}.png")
+            cv2.imwrite(path, img)
+            log_warning(t("farm.next_stuck_saved", path=path))
+        except Exception as e:
+            log_warning(t("farm.next_stuck_error", err=e))
+
     def _handle_waiting_gameplay(self, resized: np.ndarray) -> None:
         """等待回到自由漫游，按 START 打开暂停菜单。"""
         play_state = self.detector.detect(resized, mode="racing")
@@ -464,7 +507,7 @@ class FarmStateMachine:
             log_success(t("farm.gameplay_found"))
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=0)
             self.waiting_for_gameplay = False
-            time.sleep(2.5)
+            interruptible_sleep(2.5)
 
             if self.matches_needed <= 0:
                 clear_race_state()
@@ -521,6 +564,7 @@ class FarmStateMachine:
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
                     self.waiting_for_next = True
                     self._wait_next_start = time.time()
+                    self._wait_next_debug_saved = False
                     log_info(t("farm.wait_next"))
                 return True
         return False
@@ -659,7 +703,7 @@ class FarmStateMachine:
 
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
         safe_print(f"{Fore.GREEN}{t('farm.solo_ok')}{Style.RESET_ALL}")
-        time.sleep(1.5)
+        interruptible_sleep(1.5)
 
     def _on_car_select(self) -> None:
         """车辆选择：直接确认当前车辆。"""
@@ -680,7 +724,7 @@ class FarmStateMachine:
         self.is_racing = True
         self.entering_race = False
         self.racing_print_timer = time.time()
-        time.sleep(3.0)
+        interruptible_sleep(3.0)
 
     def _on_unknown(self, state: str) -> None:
         """UNKNOWN 状态：等待 UI 加载 + 自动恢复。"""
@@ -711,7 +755,7 @@ class FarmStateMachine:
                 recovery_hwnd = find_game_window()
                 if recovery_hwnd:
                     force_foreground(recovery_hwnd)
-                time.sleep(2.0)
+                interruptible_sleep(2.0)
 
         # 诊断警告
         if self.unknown_consecutive_count >= 5 and not self.waiting_for_gameplay:
@@ -735,7 +779,7 @@ class FarmStateMachine:
 
         resized, img = self._capture_frame()
         if resized is None:
-            time.sleep(0.5)
+            interruptible_sleep(0.5)
             return
 
         # Rate Event 弹窗
@@ -843,6 +887,7 @@ def main(gamepad: vg.VX360Gamepad | None = None) -> None:
 
     try:
         while not fsm.should_exit:
+            check_stop()  # 每个 tick 边界的安全停止点（协作式停止）
             elapsed_hours = (time.time() - start_time) / 3600
             if elapsed_hours >= max_runtime_hours:
                 break

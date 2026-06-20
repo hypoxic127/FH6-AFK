@@ -106,16 +106,26 @@ class StateDetector:
         return "restart" in end_text
 
     def _check_next_screen(self, resized, h, w):
-        """检测 Next 结算画面：OCR 检测 h10-13%, w4-14% 的 'What's Next' 文字。"""
-        next_roi = resized[int(h * 0.10) : int(h * 0.13), int(w * 0.04) : int(w * 0.14)]
-        # 亮度预检
+        """检测 Next 结算画面：OCR 识别左上 "What's Next" 标题。
+
+        兼容性设计：
+        - 分数 ROI 对 16:9 各分辨率天然缩放无关；适当放宽 ROI 容忍 HUD 缩放带来的位移。
+        - 放宽亮度预检上限，避免“偏亮的结算背景”被整帧跳过（这是干等到 60s 强退的常见原因）。
+        - PSM7（单行）为主、PSM6（块）兜底，并对关键词做宽松匹配，提升不同字距/缩放下的鲁棒性。
+        - 依赖英文 UI（与项目前提一致）；若需多语言，应改用与文本无关的视觉线索或按语言的关键词表。
+        """
+        next_roi = resized[int(h * 0.09) : int(h * 0.14), int(w * 0.03) : int(w * 0.22)]
+        # 亮度预检：仅跳过近乎纯黑/纯白；放宽上限以兼容偏亮的结算画面
         brightness = float(np.mean(next_roi))
-        if brightness < 30 or brightness > 220:
+        if brightness < 10 or brightness > 250:
             return False
         next_gray = cv2.cvtColor(next_roi, cv2.COLOR_BGR2GRAY)
         _, next_thresh = cv2.threshold(next_gray, 120, 255, cv2.THRESH_BINARY)
-        next_text = pytesseract.image_to_string(next_thresh, config="--psm 7").strip().lower()
-        return "next" in next_text
+        text = pytesseract.image_to_string(next_thresh, config="--psm 7").strip().lower()
+        # 单行模式未命中时，用块模式再 OCR 一次兜底
+        if not any(k in text for k in ("next", "what")):
+            text += " " + pytesseract.image_to_string(next_thresh, config="--psm 6").strip().lower()
+        return any(k in text for k in ("next", "what"))
 
     def _check_playing(self, resized, h, w):
         """

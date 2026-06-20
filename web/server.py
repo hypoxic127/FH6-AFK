@@ -280,22 +280,34 @@ def _kill_thread(thread: threading.Thread) -> bool:
 
 @_socketio.on("stop_bot")
 def handle_stop_bot() -> None:
-    """立即停止 bot 线程。"""
+    """停止 bot：协作式优先，注入式兜底。
+
+    先置停止标志并立即回前端（不阻塞 SocketIO dispatch 线程），再把宽限等待 +
+    兜底注入 + 清理放到后台任务里执行（遵守 CLAUDE.md：长任务必须 start_background_task 卸载）。
+    """
     _bot_stop_event.set()
-    request_stop()
+    request_stop()  # 置协作标志：worker 将在下一个安全点（按键前 / 可中断 sleep / tick 边界）退出
+    _socketio.emit("bot_status", {"running": False})  # 立即给前端反馈
+    _socketio.start_background_task(_finalize_stop, _bot_thread)
 
-    # 向 bot 线程注入异常，立即中断 time.sleep / I/O / 任何 Python 代码
-    if _bot_thread and _bot_thread.is_alive():
-        _kill_thread(_bot_thread)
 
-    get_bus().emit("bot_stopped", {})
-    _socketio.emit("bot_status", {"running": False})
-    get_bus().emit("log", {"level": "warning", "msg": "⛔ Bot 已被 Web UI 手动停止"})
+def _finalize_stop(thread: "threading.Thread | None") -> None:
+    """后台收尾：给 worker 宽限期自行协作退出，仅在其卡在 C 调用时才注入异常兜底。"""
+    if thread and thread.is_alive():
+        thread.join(timeout=2.0)  # 宽限：等待协作式停止在安全点退出
+        if thread.is_alive():
+            # 仍存活 = 阻塞在无法被协作打断的 C 调用（如 tesseract 子进程 / sct.grab）
+            # → 注入异步异常作为兜底
+            _kill_thread(thread)
+            thread.join(timeout=2.0)
 
-    # Reset MSS — _kill_thread leaves GDI handles in corrupt state
+    # Reset MSS — 注入路径可能使 GDI 句柄处于损坏状态
     from engine.utils import reset_mss
 
     reset_mss()
+
+    get_bus().emit("bot_stopped", {})
+    get_bus().emit("log", {"level": "warning", "msg": "⛔ Bot 已被 Web UI 手动停止"})
 
 
 @_socketio.on("get_state")

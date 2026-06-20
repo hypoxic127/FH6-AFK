@@ -388,6 +388,18 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "MSS screenshot instance reset. Will retry capture on next tick.",
         "zh": "MSS 截图实例已重置，将在下一帧重试截图。",
     },
+    "farm.next_stuck_saved": {
+        "en": "⚠ Stuck on the result screen — saved a debug screenshot for troubleshooting: {path}",
+        "zh": "⚠ 卡在结算画面 —— 已保存一张调试截图供排查：{path}",
+    },
+    "farm.next_stuck_capture_fail": {
+        "en": "Stuck on the result screen but failed to capture a debug screenshot.",
+        "zh": "卡在结算画面，但截取调试图失败。",
+    },
+    "farm.next_stuck_error": {
+        "en": "Failed to save stuck-screen debug screenshot: {err}",
+        "zh": "保存结算卡死调试截图失败: {err}",
+    },
     "farm.capture_reset_fail": {
         "en": "Failed to reset MSS after capture error: {err}",
         "zh": "截图失败后重置 MSS 出错: {err}",
@@ -640,6 +652,14 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Retrying current state in 5 seconds...",
         "zh": "尝试等待 5 秒后重试当前状态...",
     },
+    "loop.ocr_unavailable": {
+        "en": "❌ Tesseract OCR is unavailable — this is fatal, aborting (no retry). Please install Tesseract OCR.",
+        "zh": "❌ Tesseract OCR 不可用 —— 此为致命错误，已中止（不再重试）。请安装 Tesseract OCR。",
+    },
+    "loop.too_many_errors": {
+        "en": "❌ Aborting after {n} consecutive errors in the same stage (circuit breaker).",
+        "zh": "❌ 同一阶段连续出错 {n} 次，触发熔断，已中止。",
+    },
     "loop.bot_stopped": {
         "en": "     ⛔ Bot stopped by user",
         "zh": "     ⛔ Bot 已被用户主动停止",
@@ -777,6 +797,10 @@ _STRINGS: dict[str, dict[str, str]] = {
     "loop.kb_releasing": {
         "en": "     Safely releasing controller and exiting...",
         "zh": "     正在安全释放控制器并退出主程序...",
+    },
+    "loop.teardown_done": {
+        "en": "     Controller released and screen capture reset.",
+        "zh": "     已释放手柄并重置截图。",
     },
     "general.select_main_a": {
         "en": "  -> A × 1 select main car...",

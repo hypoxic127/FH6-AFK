@@ -150,6 +150,18 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "Run with --update to apply, or update via Web UI.",
         "zh": "使用 --update 参数更新，或在 Web UI 中一键更新。",
     },
+    "tesseract_missing": {
+        "en": (
+            "  ❌ Tesseract OCR not detected — the bot cannot read the screen without it.\n"
+            "     Install from: https://github.com/UB-Mannheim/tesseract/releases\n"
+            "     (The default install path is auto-detected; no need to add it to PATH.)"
+        ),
+        "zh": (
+            "  ❌ 未检测到 Tesseract OCR —— 缺少它无法识别游戏画面，程序已退出。\n"
+            "     请从此处安装：https://github.com/UB-Mannheim/tesseract/releases\n"
+            "     （默认安装路径会被自动检测，无需手动加入 PATH。）"
+        ),
+    },
 }
 
 # Phase display names
@@ -368,6 +380,15 @@ if __name__ == "__main__":
                 print(f"\n  [UPDATE] New version v{ver} available (current: v{__version__})")
 
         background_check(on_update_found=_on_update_found)
+
+    # Pre-flight: Tesseract OCR is mandatory for all screen reading. Detect & configure
+    # its path once here (process-global, inherited by the Web worker thread). If it is
+    # unavailable, exit immediately with a clear message instead of looping forever later.
+    from engine.ocr import setup_tesseract
+
+    if not setup_tesseract():
+        print(f"\n{_t('tesseract_missing', lang)}\n")
+        sys.exit(1)
 
     # Step 2: Mode selection (CLI flags take priority)
     if args.web:

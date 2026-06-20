@@ -6,13 +6,20 @@ macro/master_loop.py — 主控状态机循环
 """
 
 import sys
-import threading
 import time
 
+import pytesseract
 import vgamepad as vg
 from colorama import Fore, Style
 
 import engine.ocr as module_ocr
+from engine.control import (
+    BotStoppedError,  # noqa: F401 — re-exported for web/server.py & macro/core.py & farm/skills.py
+    check_stop,
+    clear_stop,  # noqa: F401 — re-exported for web/server.py
+    is_stop_requested,  # noqa: F401 — re-exported for截图层 (macro/core.py, farm/skills.py)
+    request_stop,  # noqa: F401 — re-exported for web/server.py
+)
 from engine.event_bus import get_bus
 from engine.i18n import t
 from engine.utils import log_error, log_info, log_success, log_warning
@@ -51,28 +58,11 @@ from macro.purchase import (
 )
 from macro.upgrade import action_upgrade_car_skills
 
-# 全局停止事件，由 Web UI 的 stop_bot 处理器设置
-_stop_event: threading.Event = threading.Event()
+# 停止原语统一由 engine/control.py 提供（见上方 import），此处仅再导出以保持现有
+# `from macro.master_loop import BotStoppedError, clear_stop, request_stop, is_stop_requested` 可用。
 
-
-class BotStoppedError(Exception):
-    """用户通过 Web UI 主动停止 bot 时抛出。"""
-
-
-def request_stop() -> None:
-    """设置停止标志，主循环将在下一个检查点退出。"""
-    _stop_event.set()
-
-
-def clear_stop() -> None:
-    """清除停止标志（启动前调用）。"""
-    _stop_event.clear()
-
-
-def _check_stop() -> None:
-    """检查停止标志，若已设置则抛出 BotStoppedError。"""
-    if _stop_event.is_set():
-        raise BotStoppedError("Bot stopped by user")
+# 同一 state 连续异常达到此次数则熔断退出，避免任何持续性错误无限 5s 空转
+MAX_CONSECUTIVE_STATE_ERRORS: int = 5
 
 
 def run_master_bot_loop(
@@ -108,9 +98,10 @@ def run_master_bot_loop(
 
     current_state = initial_state if initial_state else STATE_FARM_POINTS
     loop_count = 1
+    consecutive_errors = 0  # 连续异常计数（熔断用），每个 state 正常完成后归零
     try:
         while True:
-            _check_stop()
+            check_stop()
             log_info(t("loop.cycle", count=loop_count))
             try:
                 # --- 1. 买车阶段 ---
@@ -385,10 +376,21 @@ def run_master_bot_loop(
                     loop_count += 1
                     time.sleep(2.0)
 
+                # 本轮 state 正常完成（未抛异常）→ 重置连续错误计数
+                consecutive_errors = 0
+
             except BotStoppedError:
                 raise
+            except pytesseract.TesseractNotFoundError:
+                # OCR 环境缺失属致命错误，重试无意义 → 直接终止，避免无限 5s 死循环
+                log_error(t("loop.ocr_unavailable"))
+                raise
             except Exception as e:
+                consecutive_errors += 1
                 log_error(t("loop.state_error", state=current_state, err=e))
+                if consecutive_errors >= MAX_CONSECUTIVE_STATE_ERRORS:
+                    log_error(t("loop.too_many_errors", n=consecutive_errors))
+                    raise
                 log_warning(t("loop.state_retry"))
                 time.sleep(5.0)
                 continue
@@ -404,3 +406,19 @@ def run_master_bot_loop(
         log_warning(t("loop.kb_releasing"))
         log_warning("==================================================")
         sys.exit(0)
+    finally:
+        # 无论何种原因退出（正常完成 / Web 停止 / 异常 / Ctrl-C），都释放虚拟手柄所有按键
+        # 并重置 MSS——避免停止后游戏仍收到残留输入，或损坏的 GDI 句柄影响下次启动。
+        # （farm 阶段已自行清理油门/手柄，此处是覆盖 BUY/UPGRADE/TRASH 阶段的安全网。）
+        try:
+            gamepad.reset()
+            gamepad.update()
+        except Exception:
+            pass  # 手柄清理失败不应掩盖正在传播的退出原因
+        try:
+            from engine.utils import reset_mss
+
+            reset_mss()
+        except (ImportError, OSError):
+            pass
+        log_info(t("loop.teardown_done"))

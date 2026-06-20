@@ -126,7 +126,14 @@ def capture_screenshot(hwnd):
         return resized, cx, cy, cw, ch
 
     except Exception as e:
-        log_error(t("core.capture_fail", err=e))
+        # 停止信号原样抛出（尽快终止、且不当作错误打印）
+        from macro.master_loop import BotStoppedError, is_stop_requested
+
+        if isinstance(e, BotStoppedError):
+            raise
+        # 手动停止/teardown 期间窗口句柄失效导致的截图失败属预期 → 静默，不打 ERROR
+        if not is_stop_requested():
+            log_error(t("core.capture_fail", err=e))
         # GDI 句柄可能已损坏，重置 MSS 单例
         try:
             from engine.utils import reset_mss
@@ -161,7 +168,14 @@ def capture_raw_screenshot(hwnd):
         img = np.array(screenshot)
         return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
     except Exception as e:
-        log_error(t("core.capture_fail", err=e))
+        # 停止信号原样抛出（尽快终止、且不当作错误打印）
+        from macro.master_loop import BotStoppedError, is_stop_requested
+
+        if isinstance(e, BotStoppedError):
+            raise
+        # 手动停止/teardown 期间的截图失败属预期 → 静默，不打 ERROR
+        if not is_stop_requested():
+            log_error(t("core.capture_fail", err=e))
         try:
             from engine.utils import reset_mss
 

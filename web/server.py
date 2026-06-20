@@ -20,7 +20,7 @@ import threading
 import time
 from typing import Any
 
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 from flask_socketio import SocketIO
 
 from engine.event_bus import get_bus
@@ -66,9 +66,90 @@ def index() -> str:
     return send_from_directory(_app.static_folder, "index.html")
 
 
+@_app.route("/api/roi_image")
+def get_roi_image() -> Any:
+    """提供当前缓存的截图供框选。"""
+    from engine.runtime import get_data_dir
+
+    return send_from_directory(get_data_dir(), "roi_temp.jpg")
+
+
 # ==========================================
 # WebSocket 事件处理
 # ==========================================
+def _do_roi_capture(sid: str) -> None:
+    """后台任务：置顶游戏窗口并截图，保存为 roi_temp.jpg，结果回传给请求的客户端。
+
+    在后台线程中运行（由 handle_capture_roi 通过 start_background_task 调度），
+    避免阻塞 SocketIO 事件分发线程，确保 force_foreground/截图期间响应仍可送达。
+    所有响应使用 to=sid 精确回传给发起请求的客户端。
+    """
+    import os
+    import time
+    import traceback
+
+    from engine.utils import log_error, log_info
+
+    try:
+        import cv2
+
+        from engine.runtime import get_data_dir
+        from engine.utils import find_game_window, force_foreground, reset_mss
+        from macro.core import capture_raw_screenshot
+
+        hwnd = find_game_window()
+        if not hwnd:
+            log_error("Game window not found.")
+            _socketio.emit("roi_capture_error", {"msg": "未找到游戏窗口，请确保游戏正在运行。"}, to=sid)
+            return
+
+        log_info("Calling force_foreground...")
+        force_foreground(hwnd)
+
+        log_info("Waiting for foreground animation (1.5s in force_foreground + 1.0s here)...")
+        time.sleep(1.0)
+
+        # 后台线程独立截图：重置 MSS 以获得本线程专属、未损坏的 GDI 设备上下文
+        # （与 start_bot/stop_bot 一致，避免跨线程复用导致截图静默失败）
+        reset_mss()
+
+        log_info("Calling capture_raw_screenshot...")
+        img = capture_raw_screenshot(hwnd)
+
+        log_info(f"Screenshot result: {'Success' if img is not None else 'Failed'}")
+        if img is None or img.size == 0:
+            _socketio.emit(
+                "roi_capture_error",
+                {"msg": "截图失败，请确保游戏未被最小化且不在独占全屏状态。"},
+                to=sid,
+            )
+            return
+
+        out_path = os.path.join(get_data_dir(), "roi_temp.jpg")
+        log_info(f"Saving screenshot to {out_path}...")
+        cv2.imwrite(out_path, img)
+
+        log_info("Emitting roi_capture_success to frontend.")
+        _socketio.emit("roi_capture_success", {"url": f"/api/roi_image?t={time.time()}"}, to=sid)
+    except Exception as e:
+        log_error(f"Crash in _do_roi_capture: {e}\n{traceback.format_exc()}")
+        _socketio.emit("roi_capture_error", {"msg": f"系统内部异常: {e}"}, to=sid)
+
+
+@_socketio.on("capture_roi_screenshot")
+def handle_capture_roi() -> None:
+    """强制置顶并截图，保存为 roi_temp.jpg，通知前端刷新。
+
+    截图涉及 force_foreground + sleep 等阻塞操作，放入后台任务执行，
+    事件处理函数立即返回，避免阻塞 SocketIO 分发线程。
+    """
+    from engine.utils import log_info
+
+    log_info("Received capture_roi_screenshot request from frontend.")
+    sid = request.sid  # type: ignore[attr-defined]
+    _socketio.start_background_task(_do_roi_capture, sid)
+
+
 @_socketio.on("connect")
 def handle_connect() -> None:
     """客户端连接时推送当前状态、最近日志、版本和更新信息。"""
@@ -97,10 +178,11 @@ def handle_connect() -> None:
             },
         )
 
-    # 推送 Bot 配置（单局点数等）
-    from engine.runtime import load_bot_config
+    # 推送 Bot 配置与历史统计数据
+    from engine.runtime import get_historical_stats, load_bot_config
 
     _socketio.emit("bot_config", load_bot_config())
+    _socketio.emit("historical_stats", get_historical_stats())
 
 
 @_socketio.on("get_bot_config")
@@ -116,11 +198,20 @@ def handle_save_bot_config(data: dict[str, int] | None = None) -> None:
     """保存 Bot 配置（单局点数/目标点数）。"""
     if not data:
         return
-    from engine.runtime import save_bot_config
+    from engine.runtime import get_historical_stats, save_bot_config
 
     save_bot_config(data)
     _socketio.emit("bot_config", data)
+    _socketio.emit("historical_stats", get_historical_stats())
     get_bus().emit("log", {"level": "info", "msg": f"Bot config updated: {data}"})
+
+
+@_socketio.on("get_historical_stats")
+def handle_get_historical_stats() -> None:
+    """客户端请求历史统计数据。"""
+    from engine.runtime import get_historical_stats
+
+    _socketio.emit("historical_stats", get_historical_stats())
 
 
 @_socketio.on("start_bot")
@@ -273,10 +364,16 @@ def _bridge_events() -> None:
         _socketio.emit("bot_status", {"running": False})
         _socketio.emit("state_update", get_state_manager().get_state())
 
+    def _on_match_archived(data: dict[str, Any]) -> None:
+        from engine.runtime import get_historical_stats
+
+        _socketio.emit("historical_stats", get_historical_stats())
+
     bus.on("log", _on_log)
     bus.on("state_change", _on_state_change)
     bus.on("bot_started", _on_bot_started)
     bus.on("bot_stopped", _on_bot_stopped)
+    bus.on("match_archived", _on_match_archived)
 
 
 # ==========================================

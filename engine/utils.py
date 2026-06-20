@@ -15,6 +15,12 @@ import sys
 import time
 from ctypes import wintypes
 
+# Force Windows DPI Awareness to prevent display scaling from breaking screen captures
+try:
+    ctypes.windll.user32.SetProcessDPIAware()
+except Exception:
+    pass
+
 from colorama import Fore, Style, init
 
 # ==========================================
@@ -55,7 +61,7 @@ def reset_mss() -> None:
     if _mss_instance is not None:
         try:
             _mss_instance.close()
-        except OSError:
+        except Exception:
             pass  # close() failure is non-critical; instance will be reset
         _mss_instance = None
         from engine.i18n import t

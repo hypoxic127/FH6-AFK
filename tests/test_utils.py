@@ -87,3 +87,65 @@ class TestMssSingleton:
         reset_mss()
         sct2 = get_mss()
         assert sct1 is not sct2
+
+
+@pytest.mark.usefixtures("tmp_race_state")
+class TestGetHistoricalStats:
+    """历史统计数据解析功能测试。"""
+
+    def test_empty_log_returns_defaults(self) -> None:
+        """无文件或文件为空时返回默认数值。"""
+        from engine.runtime import get_historical_stats
+
+        stats = get_historical_stats()
+        assert stats["total_matches"] == 0
+        assert stats["success_rate"] == 100
+        assert stats["est_points"] == 0
+        assert stats["avg_time_seconds"] == 0
+        assert stats["total_wheelspins"] == 0
+
+    def test_calculate_stats_from_log(self, tmp_race_state) -> None:
+        """从模拟的 jsonl 记录中正确计算各项指标，包括超级轮盘数和排除非比赛事件。"""
+        import json
+        import os
+        from engine.runtime import get_data_dir, get_historical_stats
+
+        data_dir = str(tmp_race_state)
+        archive_path = os.path.join(data_dir, "play_archive.jsonl")
+
+        # 写入 4 场比赛记录和 2 条升级记录（包含两个 60 秒的比赛间隔，以及一个 10 分钟的比赛间隔）
+        # 升级事件插在比赛中间，应该被忽略于时间间隔计算
+        records = [
+            {"ts": "2026-06-02T08:00:00", "type": "race", "match": 1, "remaining": 9, "status": "success"},
+            {"ts": "2026-06-02T08:01:00", "type": "race", "match": 2, "remaining": 8, "status": "success"},
+            {"ts": "2026-06-02T08:01:30", "type": "upgrade", "car": "Impreza", "wheelspins": 1},
+            {"ts": "2026-06-02T08:02:00", "type": "race", "match": 3, "remaining": 7, "status": "success"},
+            {"ts": "2026-06-02T08:02:40", "type": "upgrade", "car": "Impreza", "wheelspins": 1},
+            {"ts": "2026-06-02T08:12:00", "type": "race", "match": 4, "remaining": 6, "status": "success"},
+        ]
+
+        with open(archive_path, "w", encoding="utf-8") as f:
+            for r in records:
+                f.write(json.dumps(r) + "\n")
+
+        stats = get_historical_stats()
+        assert stats["total_matches"] == 4
+        assert stats["success_rate"] == 100
+        # 默认 points_per_match = 10，所以 4 场比赛共 40 点
+        assert stats["est_points"] == 40
+        # 累计升级获得的超级轮盘数应为 2
+        assert stats["total_wheelspins"] == 2
+        # 比赛时间差为 60s, 60s, 600s. 600s 被过滤，平均时间应为 (60 + 60) / 2 = 60s
+        assert stats["avg_time_seconds"] == 60
+
+        # 验证 recent_races 图表数据
+        recent = stats["recent_races"]
+        assert len(recent) == 4
+        assert recent[0]["match"] == 1
+        assert recent[0]["duration"] is None  # 第一场无前序比赛
+        assert recent[1]["match"] == 2
+        assert recent[1]["duration"] == 60  # 8:01 - 8:00 = 60s
+        assert recent[2]["match"] == 3
+        assert recent[2]["duration"] == 60  # 8:02 - 8:01 = 60s (忽略中间的升级事件)
+        assert recent[3]["match"] == 4
+        assert recent[3]["duration"] is None  # 8:12 - 8:02 = 600s (超过 300s 阈值，设为 None)

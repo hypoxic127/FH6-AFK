@@ -49,6 +49,7 @@ from macro.purchase import (
     navigate_to_impreza_purchase_screen,
 )
 from macro.upgrade import action_upgrade_car_skills
+from farm.skills import archive_upgrade_to_file
 
 # 全局停止事件，由 Web UI 的 stop_bot 处理器设置
 _stop_event: threading.Event = threading.Event()
@@ -193,6 +194,7 @@ def run_master_bot_loop(
 
                         log_success(t("loop.upgrade_enter", n=upgraded_count))
                         remaining_points = action_upgrade_car_skills(hwnd, gamepad)
+                        archive_upgrade_to_file("Subaru Impreza", 1)
                         get_bus().emit("stats_update", {"super_wheelspins": upgraded_count})
 
                         # 触发条件 2: Available Points < 30 → 技能点不足，进入删车

@@ -1700,3 +1700,274 @@ html {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* --- Web UI Enhancements (Proposals 1-3) --- */
+
+/* Log Filters and Search Bar */
+.log-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.015);
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+}
+
+.filter-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.filter-badge:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.filter-badge[data-level="all"].active {
+    background: rgba(61, 139, 255, 0.1);
+    color: var(--neon-blue);
+    border-color: rgba(61, 139, 255, 0.35);
+}
+
+.filter-badge[data-level="info"].active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.filter-badge[data-level="success"].active {
+    background: rgba(0, 229, 200, 0.1);
+    color: var(--neon-cyan);
+    border-color: rgba(0, 229, 200, 0.35);
+}
+
+.filter-badge[data-level="warning"].active {
+    background: rgba(255, 140, 34, 0.1);
+    color: var(--neon-orange);
+    border-color: rgba(255, 140, 34, 0.35);
+}
+
+.filter-badge[data-level="error"].active {
+    background: rgba(255, 45, 120, 0.1);
+    color: var(--neon-pink);
+    border-color: rgba(255, 45, 120, 0.35);
+}
+
+#log-search {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    width: 180px;
+    outline: none;
+    transition: var(--transition);
+}
+
+#log-search:focus {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(61, 139, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* SVG Chart styles */
+.chart-section {
+    display: flex;
+    width: 100%;
+}
+
+.chart-card {
+    transition: var(--transition);
+}
+
+.chart-card:hover {
+    border-color: var(--border-glow);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* Chart Tooltip */
+.chart-tooltip-el {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    background: rgba(12, 18, 38, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    transform: translate(-50%, -100%) translateY(-10px);
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+}
+
+.chart-tooltip-el::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px 5px 0;
+    border-style: solid;
+    border-color: rgba(12, 18, 38, 0.95) transparent transparent;
+    display: block;
+    width: 0;
+}
+
+/* Active class for toolbar auto-scroll button */
+.toolbar-btn.active {
+    background: rgba(61, 139, 255, 0.15);
+    color: var(--neon-blue);
+    border-color: rgba(61, 139, 255, 0.3);
+    box-shadow: 0 0 8px rgba(61, 139, 255, 0.2);
+}
+
+/* --- ROI Calibration Modal --- */
+.roi-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.roi-modal-overlay.active {
+    display: flex;
+}
+
+.roi-modal-header {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.roi-modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--neon-cyan);
+}
+
+.roi-modal-instructions {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-left: 16px;
+}
+
+.roi-modal-body {
+    width: 100%;
+    max-width: 1200px;
+    background: #000;
+    position: relative;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.roi-canvas-container {
+    position: relative;
+    cursor: crosshair;
+    display: inline-block;
+}
+
+#roi-image {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.roi-box {
+    position: absolute;
+    border: 2px solid var(--neon-pink);
+    background: rgba(255, 45, 120, 0.2);
+    box-shadow: 0 0 10px var(--glow-pink);
+    pointer-events: none;
+    display: none;
+}
+
+.roi-modal-footer {
+    width: 100%;
+    max-width: 1200px;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Loading / error status shown inside the modal body before the screenshot arrives */
+.roi-status {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 240px;
+    padding: 32px;
+    text-align: center;
+}
+
+.roi-status-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    max-width: 560px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.roi-status.error .roi-status-text {
+    color: var(--neon-pink);
+}
+
+.roi-status.error .roi-spinner {
+    display: none;
+}
+
+.roi-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid rgba(0, 229, 200, 0.2);
+    border-top-color: var(--neon-cyan);
+    border-radius: 50%;
+    animation: roi-spin 0.9s linear infinite;
+}
+
+@keyframes roi-spin {
+    to { transform: rotate(360deg); }
+}
+
+#btn-save-roi:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}

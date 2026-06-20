@@ -99,6 +99,7 @@ def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
     archive_path = _get_archive_path()
     record = {
         "ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "type": "race",
         "match": match_num,
         "remaining": remaining_matches,
         "status": "success",
@@ -108,6 +109,30 @@ def archive_match_to_file(match_num: int, remaining_matches: int) -> None:
         with open(archive_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
         log_success(t("farm.archived", path=archive_path))
+        from engine.event_bus import get_bus
+
+        get_bus().emit("match_archived", record)
+    except IOError as e:
+        log_error(t("farm.archive_fail", err=e))
+
+
+def archive_upgrade_to_file(car_name: str = "Impreza", wheelspins: int = 1) -> None:
+    """将车辆升级记录（获得超级轮盘）以 JSONL 格式追加到 data/play_archive.jsonl。"""
+    archive_path = _get_archive_path()
+    record = {
+        "ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "type": "upgrade",
+        "car": car_name,
+        "wheelspins": wheelspins,
+    }
+
+    try:
+        with open(archive_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        log_success(f"Archived upgrade event: {car_name} (+{wheelspins} Super Wheelspin)")
+        from engine.event_bus import get_bus
+
+        get_bus().emit("match_archived", record)  # 触发事件广播以更新前端统计
     except IOError as e:
         log_error(t("farm.archive_fail", err=e))
 

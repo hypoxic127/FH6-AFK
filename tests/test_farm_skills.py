@@ -25,6 +25,7 @@ from farm.skills import (
 # ==========================================
 
 
+@pytest.mark.usefixtures("tmp_race_state")
 class TestGetMatchesNeeded:
     """比赛场次计算器测试。"""
 

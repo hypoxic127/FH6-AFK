@@ -58,19 +58,22 @@ def get_data_dir() -> str:
     return data_dir
 
 
-_DEFAULT_BOT_CONFIG: dict[str, int] = {
+from typing import Any
+
+_DEFAULT_BOT_CONFIG: dict[str, Any] = {
     "points_per_match": 10,
     "target_points": 999,
+    "custom_roi": None,
 }
 
 
-def load_bot_config() -> dict[str, int]:
+def load_bot_config() -> dict[str, Any]:
     """加载用户 Bot 配置 (data/bot_config.json)。
 
     文件不存在或损坏时返回默认值。用于支持不同蓝图的单局点数自定义。
 
     Returns:
-        包含 points_per_match 和 target_points 的配置字典
+        包含 points_per_match 和 target_points 及 custom_roi 的配置字典
     """
     config_path = os.path.join(get_data_dir(), "bot_config.json")
     if not os.path.exists(config_path):
@@ -83,25 +86,28 @@ def load_bot_config() -> dict[str, int]:
         merged = dict(_DEFAULT_BOT_CONFIG)
         for k, v in user_cfg.items():
             if k in merged:
-                try:
-                    merged[k] = int(v)
-                except (ValueError, TypeError):
-                    pass
+                if k in ["points_per_match", "target_points"]:
+                    try:
+                        merged[k] = int(v)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    merged[k] = v
         return merged
     except (IOError, ValueError):
         return dict(_DEFAULT_BOT_CONFIG)
 
 
-def save_bot_config(config: dict[str, int]) -> None:
+def save_bot_config(config: dict[str, Any]) -> None:
     """保存用户 Bot 配置到 data/bot_config.json。
 
     Args:
-        config: 包含 points_per_match 和/或 target_points 的配置字典
+        config: 包含 points_per_match 和/或 target_points 及 custom_roi 的配置字典
     """
     import json
 
     config_path = os.path.join(get_data_dir(), "bot_config.json")
-    merged = dict(_DEFAULT_BOT_CONFIG)
+    merged = load_bot_config()
     merged.update(config)
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2, ensure_ascii=False)
@@ -114,3 +120,110 @@ def is_frozen() -> bool:
         True 表示运行在打包的 exe 中
     """
     return getattr(sys, "frozen", False)
+
+
+def get_historical_stats() -> dict[str, Any]:
+    """从 data/play_archive.jsonl 读取比赛历史记录并计算统计数据。
+
+    Returns:
+        包含累计比赛、成功率、累计赚取点数及平均单场时间的字典
+    """
+    import json
+    from datetime import datetime
+    from typing import Any
+
+    archive_path = os.path.join(get_data_dir(), "play_archive.jsonl")
+
+    total_matches = 0
+    success_matches = 0
+    total_wheelspins = 0
+    race_records = []
+
+    if os.path.exists(archive_path):
+        try:
+            with open(archive_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                        rec_type = record.get("type", "race")  # 默认视为比赛记录以兼容历史数据
+                        if rec_type == "upgrade":
+                            total_wheelspins += record.get("wheelspins", 1)
+                        else:  # race
+                            total_matches += 1
+                            status = record.get("status", "success")
+                            if status == "success":
+                                success_matches += 1
+                            ts_str = record.get("ts")
+                            dt = None
+                            if ts_str:
+                                for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+                                    try:
+                                        dt = datetime.strptime(ts_str, fmt)
+                                        break
+                                    except ValueError:
+                                        continue
+                            race_records.append(
+                                {"match": record.get("match", total_matches), "dt": dt, "status": status}
+                            )
+                    except json.JSONDecodeError:
+                        continue
+        except IOError:
+            pass
+
+    success_rate = 100
+    if total_matches > 0:
+        success_rate = int((success_matches / total_matches) * 100)
+
+    config = load_bot_config()
+    points_per_match = config.get("points_per_match", 10)
+    est_points = total_matches * points_per_match
+
+    # Sort races by datetime to calculate durations
+    races_with_dt = [r for r in race_records if r["dt"] is not None]
+    races_with_dt.sort(key=lambda x: x["dt"])
+
+    timestamps = [r["dt"] for r in races_with_dt]
+
+    avg_time_seconds = 0
+    if len(timestamps) >= 2:
+        deltas = []
+        for i in range(len(timestamps) - 1):
+            diff = (timestamps[i + 1] - timestamps[i]).total_seconds()
+            if 0 < diff < 300:
+                deltas.append(diff)
+        if deltas:
+            avg_time_seconds = int(sum(deltas) / len(deltas))
+
+    # Calculate recent match durations
+    for i in range(len(races_with_dt)):
+        if i == 0:
+            races_with_dt[i]["duration"] = None
+        else:
+            diff = (races_with_dt[i]["dt"] - races_with_dt[i - 1]["dt"]).total_seconds()
+            if 0 < diff < 300:
+                races_with_dt[i]["duration"] = int(diff)
+            else:
+                races_with_dt[i]["duration"] = None
+
+    recent_races = []
+    for r in races_with_dt[-30:]:
+        recent_races.append(
+            {
+                "match": r["match"],
+                "duration": r["duration"],
+                "status": r["status"],
+                "ts": r["dt"].strftime("%Y-%m-%dT%H:%M:%S"),
+            }
+        )
+
+    return {
+        "total_matches": total_matches,
+        "success_rate": success_rate,
+        "est_points": est_points,
+        "avg_time_seconds": avg_time_seconds,
+        "total_wheelspins": total_wheelspins,
+        "recent_races": recent_races,
+    }

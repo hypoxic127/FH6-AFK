@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <div class="container">
@@ -126,6 +126,53 @@
             </div>
         </section>
 
+        <!-- Historical Stats -->
+        <section class="cards stats-section" id="history-stats">
+            <div class="card">
+                <div class="card-icon">🏁</div>
+                <div class="card-body">
+                    <div class="card-label" data-i18n="histTotalRuns">Total Runs (All-Time)</div>
+                    <div class="card-value card-value-num" id="hist-total-runs">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">💎</div>
+                <div class="card-body">
+                    <div class="card-label" data-i18n="histTotalPoints">Est. Points Earned</div>
+                    <div class="card-value card-value-num" id="hist-total-points">0</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">✅</div>
+                <div class="card-body">
+                    <div class="card-label" data-i18n="histSuccessRate">Success Rate</div>
+                    <div class="card-value card-value-num" id="hist-success-rate">0%</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⏱️</div>
+                <div class="card-body">
+                    <div class="card-label" data-i18n="histAvgTime">Avg. Match Time</div>
+                    <div class="card-value card-value-num" id="hist-avg-time">0s</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Telemetry Chart -->
+        <section class="cards chart-section" id="performance-chart-section" style="margin-top: 12px; display: none;">
+            <div class="card chart-card" style="flex: 1; flex-direction: column; align-items: stretch; padding: 16px;">
+                <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">📊</span>
+                        <h3 style="font-size: 0.95rem; font-weight: 600;" data-i18n="chartTitle">Recent Match Durations</h3>
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);" id="chart-sub-title">Last 30 matches</span>
+                </div>
+                <div class="chart-container" style="height: 160px; position: relative; width: 100%;" id="chart-svg-container">
+                </div>
+            </div>
+        </section>
+
         <!-- Dashboard: Left Controls + Right Log -->
         <section class="dashboard">
             <!-- Left Column: Controls + Guide -->
@@ -178,6 +225,24 @@
                                 <span data-i18n="skipBuy">Skip Buy</span>
                             </label>
                         </div>
+                        <div class="control-group">
+                            <label class="toggle-label">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="enable-notifications" onchange="toggleNotifications()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <span data-i18n="notifyToggle">Desktop Notifications</span>
+                            </label>
+                        </div>
+                        <div class="control-group">
+                            <label class="toggle-label">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="enable-audio" onchange="toggleAudioPreference()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <span data-i18n="audioToggle">Audio Alerts</span>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Blueprint Config -->
@@ -189,6 +254,12 @@
                         <div class="control-group config-input-group">
                             <label data-i18n="targetPoints">🎯 Target Points</label>
                             <input type="number" id="target-points" class="config-input" min="1" max="999" value="999">
+                        </div>
+                        <div class="control-group config-input-group" style="flex: 1; align-items: flex-end;">
+                            <label data-i18n="calibrateLabel">📐 Skill Points ROI</label>
+                            <button id="btn-calibrate-roi" class="btn" style="width: 100%; height: 38px; padding: 0;" onclick="startCalibration()">
+                                <span data-i18n="btnCalibrate">Calibrate</span>
+                            </button>
                         </div>
                     </div>
 
@@ -248,6 +319,16 @@
                             </div>
                         </div>
                     </div>
+                    <div class="log-filter-bar">
+                        <div class="filter-badges">
+                            <span class="filter-badge active" data-level="all" onclick="filterLogs('all')">ALL</span>
+                            <span class="filter-badge" data-level="info" onclick="filterLogs('info')">INFO</span>
+                            <span class="filter-badge" data-level="success" onclick="filterLogs('success')">SUCCESS</span>
+                            <span class="filter-badge" data-level="warning" onclick="filterLogs('warning')">WARNING</span>
+                            <span class="filter-badge" data-level="error" onclick="filterLogs('error')">ERROR</span>
+                        </div>
+                        <input type="text" id="log-search" oninput="searchLogs()" placeholder="🔍 Filter logs...">
+                    </div>
                     <div id="log-container" class="log-container">
                         <div class="log-empty"><span class="typewriter" id="typewriter-text"></span><span class="blink-cursor">_</span></div>
                     </div>
@@ -258,8 +339,31 @@
 
 
 
+    <!-- ROI Calibration Modal -->
+    <div id="roi-modal" class="roi-modal-overlay">
+        <div class="roi-modal-header">
+            <div class="roi-modal-title" data-i18n="roiModalTitle">📐 Calibrate Skill Points Region</div>
+            <div class="roi-modal-instructions" data-i18n="roiModalInst">Drag to draw a box tightly around the Skill Points number.</div>
+        </div>
+        <div class="roi-modal-body">
+            <div id="roi-status" class="roi-status">
+                <div class="roi-spinner"></div>
+                <div id="roi-status-text" class="roi-status-text"></div>
+            </div>
+            <div class="roi-canvas-container" id="roi-container">
+                <img id="roi-image" src="" alt="Game Screenshot">
+                <div id="roi-box" class="roi-box"></div>
+            </div>
+        </div>
+        <div class="roi-modal-footer">
+            <button class="btn btn-ghost" onclick="closeCalibration()" data-i18n="btnCancel">Cancel</button>
+            <button class="btn btn-clear btn-ghost" onclick="resetCalibration()" data-i18n="btnReset">Reset to Default</button>
+            <button id="btn-save-roi" class="btn btn-update" onclick="saveCalibration()" data-i18n="btnSave">Save ROI</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=6"></script>
 </body>
 </html>

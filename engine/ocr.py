@@ -100,9 +100,7 @@ YEAR_LINE_X2: float = 0.7641
 # "preza"/"sti" 作为辅助确认（至少命中 1 个）
 IMPREZA_22B_REQUIRED: list[str] = ["22b"]  # 必须全部命中
 IMPREZA_22B_OPTIONAL: list[str] = ["preza", "sti"]  # 至少命中 1 个
-# 向后兼容：保留原常量供 test 使用
-IMPREZA_22B_KEYWORDS: list[str] = IMPREZA_22B_REQUIRED + IMPREZA_22B_OPTIONAL
-IMPREZA_22B_MIN_MATCH: int = 2  # 向后兼容（但实际匹配逻辑已改用 REQUIRED+OPTIONAL）
+
 
 # --- 年份+品牌行识别关键词（第2行，灰色静止文字） ---
 # 使用宽松部分匹配，因为 OCR 对灰色小字噪声较大
@@ -706,60 +704,6 @@ def _ocr_card_text(card_img: np.ndarray | None, debug_label: str = "CARD") -> st
 # ==========================================
 # 四、绿色选中边框检测
 # ==========================================
-
-
-def has_green_selection_border(card_img: np.ndarray | None) -> bool:
-    """
-    检测卡片图像是否具有绿色选中高亮边框。
-
-    Forza Horizon 6 的 UI 中，当前选中的卡片会有一圈亮绿色的发光边框。
-    本函数通过以下步骤检测：
-    1. 创建只覆盖卡片外围 15 像素的边框掩码
-    2. 在 HSV 色彩空间中筛选绿色像素
-    3. 将绿色掩码与边框掩码做 AND 运算
-    4. 统计绿色像素数量，超过 1500 个判定为"已选中"
-
-    参数:
-        card_img: BGR 格式的卡片区域裁剪图
-
-    返回:
-        bool: True 表示卡片被绿色高亮选中
-    """
-    if card_img is None or card_img.size == 0:
-        return False
-    try:
-        h, w, _ = card_img.shape
-        hsv = cv2.cvtColor(card_img, cv2.COLOR_BGR2HSV)
-
-        # 创建仅覆盖外围 15 像素的边框区域掩码
-        border_mask = np.zeros((h, w), dtype=np.uint8)
-        border_thickness = 15
-        border_mask[0:border_thickness, :] = 255  # 上边
-        border_mask[h - border_thickness : h, :] = 255  # 下边
-        border_mask[:, 0:border_thickness] = 255  # 左边
-        border_mask[:, w - border_thickness : w] = 255  # 右边
-
-        # 在 HSV 空间中过滤绿色像素
-        lower_green = HSV_GREEN_BORDER_LOWER
-        upper_green = HSV_GREEN_BORDER_UPPER
-
-        # 使用 bitwise_and 将绿色掩码限定在边框区域内
-        green_mask = cv2.inRange(hsv, lower_green, upper_green)
-        green_border_mask = cv2.bitwise_and(green_mask, border_mask)
-        green_pixel_count = np.sum(green_border_mask == 255)
-
-        # 调试输出绿色像素计数
-        try:
-            safe_print(
-                f"{Fore.GREEN}[BORDER DEBUG]{Style.RESET_ALL} 边缘绿色边框像素点计数: {green_pixel_count} / 800 (阈值)"
-            )
-        except UnicodeEncodeError:
-            pass
-
-        return green_pixel_count >= 800
-    except Exception as e:
-        log_error(f"Error checking green selection border: {e}")
-    return False
 
 
 def has_green_selection_border_padded(

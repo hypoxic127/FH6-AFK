@@ -26,6 +26,7 @@ UX 设计:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -177,29 +178,88 @@ def check_for_update(force: bool = False) -> dict[str, Any] | None:
 
         # 精确匹配 .exe 资产（避免下载 source code 等其他文件）
         assets: list[dict[str, Any]] = data.get("assets", [])
-        exe_url: str | None = next(
-            (asset["browser_download_url"] for asset in assets if asset.get("name", "").endswith(".exe")),
+        exe_asset: dict[str, Any] | None = next(
+            (a for a in assets if a.get("name", "").endswith(".exe")),
             None,
         )
 
-        if not exe_url:
+        if not exe_asset:
             return None
+
+        # 解析 GitHub 提供的 asset 摘要（新版 API 形如 "sha256:<hex>"），用于下载后完整性校验。
+        # 老 asset 可能没有此字段 → sha256 为 None，下载侧退化为按大小校验。
+        sha256: str | None = None
+        digest: str = exe_asset.get("digest") or ""
+        if digest.startswith("sha256:"):
+            sha256 = digest.split(":", 1)[1].strip() or None
 
         _cached_update_info = {
             "version": remote_tag.lstrip("v"),
             "tag": remote_tag,
-            "download_url": exe_url,
+            "download_url": exe_asset["browser_download_url"],
             "release_url": data.get("html_url", ""),
-            "file_size": next(
-                (asset.get("size", 0) for asset in assets if asset.get("name", "").endswith(".exe")),
-                0,
-            ),
+            "file_size": exe_asset.get("size", 0),
+            "sha256": sha256,
         }
         return _cached_update_info
 
     except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, OSError) as e:
         logger.debug("Update check failed: %s", e)
         return None
+
+
+# ==========================================
+# 完整性校验（防止被篡改/损坏的下载被执行）
+# ==========================================
+
+
+def _sha256_file(path: str) -> str:
+    """分块计算文件的 SHA-256（十六进制小写）。"""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(64 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _verify_file(path: str, expected_size: int = 0, expected_sha256: str | None = None) -> tuple[bool, str]:
+    """校验下载文件的完整性/真实性。
+
+    校验优先级：
+      1. expected_sha256 已知 → 必须哈希精确匹配（最强保证，可拦截被代理篡改的内容/错误页）。
+      2. 否则 expected_size 已知 → 必须文件大小精确匹配（弱保证，记 warning）。
+      3. 两者都未知 → 退化为 >1 MB 的基本健全性检查。
+
+    Args:
+        path: 待校验文件路径
+        expected_size: GitHub asset 的期望字节数（0 表示未知）
+        expected_sha256: GitHub asset 的期望 SHA-256（十六进制，None 表示未知）
+
+    Returns:
+        (是否通过, 原因说明)
+    """
+    try:
+        actual_size = os.path.getsize(path)
+    except OSError as e:
+        return False, f"cannot stat downloaded file: {e}"
+
+    if expected_sha256:
+        actual = _sha256_file(path)
+        if actual.lower() != expected_sha256.lower():
+            return False, f"SHA-256 mismatch (expected {expected_sha256[:12]}…, got {actual[:12]}…)"
+        return True, "sha256 verified"
+
+    if expected_size > 0:
+        if actual_size != expected_size:
+            return False, f"size mismatch (expected {expected_size} bytes, got {actual_size})"
+        logger.warning("No SHA-256 from release metadata; verified by exact size only (%d bytes).", actual_size)
+        return True, "size verified (no hash available)"
+
+    # size / hash 都未知：仅做基本健全性检查
+    if actual_size < 1_000_000:
+        return False, f"file too small ({actual_size} bytes) and no checksum to verify against"
+    logger.warning("No checksum or size available; accepted by >1MB sanity check only (%d bytes).", actual_size)
+    return True, "sanity check only (no checksum/size)"
 
 
 # ==========================================
@@ -211,16 +271,20 @@ def download_update(
     url: str,
     dest_path: str,
     progress_cb: Callable[[int, int], None] | None = None,
+    expected_size: int = 0,
+    expected_sha256: str | None = None,
 ) -> bool:
-    """下载更新文件，自动尝试多个镜像。
+    """下载更新文件，自动尝试多个镜像，并对每个镜像的结果做完整性校验。
 
     Args:
         url: GitHub Release asset 的原始 URL
         dest_path: 下载保存路径
         progress_cb: 进度回调 (downloaded_bytes, total_bytes)
+        expected_size: GitHub asset 的期望字节数（用于校验，0 表示未知）
+        expected_sha256: GitHub asset 的期望 SHA-256（用于校验，None 表示未知）
 
     Returns:
-        下载成功返回 True
+        下载并校验通过返回 True；校验失败的镜像会被跳过并尝试下一个
     """
     for mirror in _DOWNLOAD_MIRRORS:
         download_url: str = f"{mirror}{url}" if mirror else url
@@ -244,12 +308,18 @@ def download_update(
                         if progress_cb:
                             progress_cb(downloaded, total)
 
-            # 基本校验：文件不为空且大于 1 MB（EXE 至少几十 MB）
-            file_size: int = os.path.getsize(dest_path)
-            if file_size < 1_000_000:
-                logger.warning("Downloaded file too small (%d bytes), skipping mirror: %s", file_size, mirror)
+            # 完整性校验：哈希/大小不符（可能被代理篡改或下载损坏）则跳过此镜像
+            ok, reason = _verify_file(dest_path, expected_size, expected_sha256)
+            if not ok:
+                logger.warning("Integrity check failed via '%s': %s — skipping mirror.", mirror or "direct", reason)
+                if os.path.exists(dest_path):
+                    try:
+                        os.remove(dest_path)
+                    except OSError:
+                        pass
                 continue
 
+            logger.debug("Download verified via '%s': %s", mirror or "direct", reason)
             return True
 
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError) as e:
@@ -409,10 +479,16 @@ def execute_update(
         temp_dir: str = tempfile.mkdtemp(prefix="fh6_update_")
         temp_exe: str = os.path.join(temp_dir, "FH6AutoBot.exe")
 
-        if not download_update(info["download_url"], temp_exe, progress_cb):
+        if not download_update(
+            info["download_url"],
+            temp_exe,
+            progress_cb,
+            expected_size=info.get("file_size", 0),
+            expected_sha256=info.get("sha256"),
+        ):
             # 清理临时目录
             shutil.rmtree(temp_dir, ignore_errors=True)
-            return "Download failed after trying all mirrors."
+            return "Download failed or integrity check failed on all mirrors."
 
         # 3. 重启前回调（Web UI 发送 rebooting 事件）
         if pre_reboot_cb:

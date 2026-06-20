@@ -27,7 +27,7 @@ if sys.stdout.encoding != "utf-8":
         pass
 
 import module_macro
-from module_state_detect import NAV_PAGES, RACING_ROIS, TAB_ZONES, StateDetector
+from module_state_detect import TAB_ZONES, StateDetector
 
 ALL_STATES = {
     # 主菜单标签 (需要在对应标签页激活时校准)

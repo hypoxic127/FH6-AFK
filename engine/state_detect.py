@@ -35,22 +35,6 @@ TAB_ZONES = {
     "STORE": (0.78, 1.00),
 }
 
-# 导航页面的 OCR 检测 ROI 和关键词
-NAV_PAGES = {
-    "EVENTLAB_MENU": {"roi": (0.20, 0.60, 0.10, 0.50), "keywords": ["play event", "play_event", "eventlab"]},
-    "FAVORITES_LIST": {"roi": (0.20, 0.50, 0.10, 0.60), "keywords": ["event", "blueprint"]},
-    "RACE_READY": {"roi": (0.20, 0.50, 0.25, 0.75), "keywords": ["choose", "solo", "convoy"]},
-    "CAR_SELECT": {"roi": (0.09, 0.13, 0.06, 0.16), "keywords": ["car", "select"]},
-    "PRE_RACE": {"roi": (0.80, 0.95, 0.30, 0.70), "keywords": ["start race", "start_race"]},
-}
-
-# 比赛状态检测的 ROI
-RACING_ROIS = {
-    "RACE_END": {"roi": (0.70, 0.95, 0.20, 0.80)},
-    "NEXT_SCREEN": {"roi": (0.80, 0.95, 0.35, 0.65)},
-    "HUD_SPEED": {"roi": (0.75, 0.98, 0.80, 0.98)},
-}
-
 
 def compute_hist(roi_bgr, bins=(18, 16)):
     """计算 ROI 的 HSV 颜色直方图（归一化）。"""
@@ -390,30 +374,6 @@ class StateDetector:
         has_brand = any(k in text for k in ["subaru", "sub"])
         has_class = "s2" in text or "889" in text
         return has_brand and has_class
-
-    # ===================================================================
-    #  MY_FAVORITES 守卫 (替代原 MY_FAVORITES 模板匹配)
-    # ===================================================================
-
-    def check_my_favorites_active(self, resized):
-        """
-        检查 MY FAVORITES 标签是否已激活。
-        用于防止在错误的子菜单页选择赛事。
-
-        原逻辑：检测未选中的 MY_FAVORITES 标签是否还可见（说明还没翻到该页）。
-        新逻辑：OCR 子菜单标签栏，检查 "my favorites" 文字并判断是否高亮。
-        """
-        h, w = resized.shape[:2]
-        sub_roi = resized[int(h * 0.06) : int(h * 0.12), int(w * 0.60) : int(w * 0.95)]
-        gray = cv2.cvtColor(sub_roi, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
-        text = pytesseract.image_to_string(thresh, config="--psm 7").strip().lower()
-
-        # 如果 "my favorites" 还在标签栏中可见（未选中状态），
-        # 说明还没翻到该页
-        if "my fav" in text or "favorites" in text:
-            return False  # 未激活，还需要继续翻
-        return True  # 已翻过该标签或已激活
 
 
 # ===================================================================

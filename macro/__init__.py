@@ -79,7 +79,6 @@ from macro.navigation import (
 )
 from macro.purchase import (
     action_buy_single_car,
-    dynamic_navigate_to_target,
     is_word_similar,
     navigate_to_impreza_purchase_screen,
 )

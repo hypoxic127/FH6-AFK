@@ -106,7 +106,6 @@ class TestBP3TypeHints:
             "check_is_high_class",
             "check_new_tag_only",
             "verify_new_target_car",
-            "has_green_selection_border",
             "has_green_selection_border_padded",
             "has_cell_below",
             "read_text_in_roi",

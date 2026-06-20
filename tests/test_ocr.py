@@ -7,7 +7,8 @@ tests/test_ocr.py — engine/ocr.py 单元测试
   - IMPREZA_22B_KEYWORDS 关键词匹配逻辑
   - detect_selected_brand_tab() 暗区检测算法
   - _ocr_card_text() 预处理管线（合成图像）
-  - has_green_selection_border() 边框检测（合成图像）
+  - detect_selected_brand_tab() 暗区检测算法
+  - _ocr_card_text() 预处理管线（合成图像）
   - is_empty_slot() 空位检测（合成图像）
 """
 
@@ -29,13 +30,10 @@ from engine.ocr import (
     HSV_GREEN_CURSOR_UPPER,
     HSV_YELLOW_NEW_LOWER,
     HSV_YELLOW_NEW_UPPER,
-    IMPREZA_22B_KEYWORDS,
-    IMPREZA_22B_MIN_MATCH,
     YEAR_BRAND_OPTIONAL,
     YEAR_BRAND_REQUIRED,
     detect_selected_brand_tab,
     # 函数
-    has_green_selection_border,
     is_empty_slot,
     match_impreza_22b,
     match_year_brand,
@@ -82,13 +80,6 @@ class TestHSVConstants:
 
 class TestImprezaKeywords:
     """关键词列表和最低命中数应一致且合理。"""
-
-    def test_keywords_not_empty(self) -> None:
-        assert len(IMPREZA_22B_KEYWORDS) >= 2
-
-    def test_min_match_within_range(self) -> None:
-        """最低命中数不能超过关键词总数。"""
-        assert 1 <= IMPREZA_22B_MIN_MATCH <= len(IMPREZA_22B_KEYWORDS)
 
     def test_typical_ocr_text_matches(self) -> None:
         """模拟 OCR 输出，验证匹配逻辑。"""
@@ -148,35 +139,6 @@ class TestYearBrandKeywords:
     def test_empty_text_fails(self) -> None:
         is_match, _ = match_year_brand("")
         assert not is_match
-
-
-# ==========================================
-# has_green_selection_border() — 合成图像
-# ==========================================
-
-
-class TestGreenSelectionBorder:
-    """绿色选中边框检测（使用合成 BGR 图像）。"""
-
-    def test_returns_false_for_none(self) -> None:
-        assert has_green_selection_border(None) is False
-
-    def test_returns_false_for_empty(self) -> None:
-        assert has_green_selection_border(np.array([])) is False
-
-    def test_returns_false_for_black_image(self) -> None:
-        """纯黑图 → 无绿色边框。"""
-        img = np.zeros((200, 280, 3), dtype=np.uint8)
-        assert not has_green_selection_border(img)
-
-    def test_returns_true_for_green_border(self) -> None:
-        """四边绘制绿色矩形 → 检测到边框。"""
-        img = np.zeros((200, 280, 3), dtype=np.uint8)
-        # 在 HSV 中 H=60(绿色), S=200, V=200 → 转为 BGR
-        green_bgr = cv2.cvtColor(np.array([[[60, 200, 200]]], dtype=np.uint8), cv2.COLOR_HSV2BGR)[0, 0]
-        thickness = 15
-        cv2.rectangle(img, (0, 0), (279, 199), green_bgr.tolist(), thickness)
-        assert has_green_selection_border(img)
 
 
 # ==========================================

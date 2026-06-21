@@ -3,7 +3,6 @@
 macro/upgrade.py — 车辆加点宏
 """
 
-import re
 import time
 
 import cv2
@@ -11,10 +10,13 @@ import numpy as np
 import pytesseract
 import vgamepad as vg
 
+import engine.ocr as module_ocr
 from engine.i18n import t
-from engine.ocr import DEBUG_WRITE_FILES
 from engine.utils import log_info, log_success, log_warning
 from macro.core import capture_raw_screenshot, capture_screenshot
+
+# Available Points 多帧共识帧数：低分辨率（如 1600×900，ROI 仅 ~56×27）下抗间歇性单帧误读
+_AP_CONSENSUS_FRAMES = 3
 
 
 def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
@@ -69,74 +71,61 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     log_info("  -> [5]  A ...")
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.2)
 
-    # === 触发条件 2: 扫描 Available Points ===
-    time.sleep(1.0)  # 等待 UI 刷新
+    # === 触发条件 2: 扫描 Available Points（多帧共识，低分辨率下抗间歇误读）===
     available_points = -1
     try:
-        from collections import Counter
-
-        raw_img = capture_raw_screenshot(hwnd)
-        if raw_img is not None:
+        candidates: list[tuple[int, float]] = []  # 跨帧累积的 (值, 置信度)
+        last_w = last_h = 0
+        for frame_idx in range(_AP_CONSENSUS_FRAMES):
+            time.sleep(1.0 if frame_idx == 0 else 0.2)  # 首帧等 UI 刷新，后续帧短间隔取多样性
+            raw_img = capture_raw_screenshot(hwnd)
+            if raw_img is None:
+                continue
             h, w = raw_img.shape[:2]
-            ocr_results = []
+            last_w, last_h = w, h
 
             # ROI: 数字区域 (h85-88%, w35-38.5%)
             roi = raw_img[int(h * 0.85) : int(h * 0.88), int(w * 0.35) : int(w * 0.385)]
+            if roi.size == 0:
+                continue
 
-            if roi.size > 0:
-                gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            # 4 条针对黄色 AP 文字的二值化管线
+            pipelines = []
+            _, t150 = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+            pipelines.append(("gray_t150", t150))
+            _, t160 = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+            pipelines.append(("gray_t160", t160))
+            _, t_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            pipelines.append(("gray_otsu", t_otsu))
+            hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+            yellow_mask = cv2.inRange(hsv, np.array([15, 40, 100]), np.array([45, 255, 255]))
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
+            yellow_mask = cv2.dilate(yellow_mask, kernel, iterations=1)  # 增粗抗锯齿细笔画
+            pipelines.append(("hsv_yellow", yellow_mask))
 
-                # === 主力管线: 灰度阈值（实测最稳定） ===
-                pipelines = []
+            # 调试输出（仅首帧；读取实时全局值，确保 --debug 运行时也能生效）
+            if module_ocr.DEBUG_WRITE_FILES and frame_idx == 0:
+                cv2.imwrite("debug_ap_roi_raw.png", roi)
+                cv2.imwrite("debug_ap_roi_gray_t150.png", t150)
+                cv2.imwrite("debug_ap_roi_yellow_mask.png", yellow_mask)
 
-                # 1. 灰度 threshold 150（test_from_state 测试14验证通过）
-                _, t150 = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-                pipelines.append(("gray_t150", t150))
+            # 每管线：补边 + 3×CUBIC 放大 + 反相 → 置信度 OCR（候选跨帧累积）
+            # 注：实测在 56×27 的小 ROI 上 3×CUBIC 优于 4×LINEAR（后者会让灰度管线误读 549→349/949）
+            for _label, binary_img in pipelines:
+                padded = cv2.copyMakeBorder(binary_img, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=0)
+                up = cv2.resize(padded, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+                up_inv = cv2.bitwise_not(up)
+                candidates.extend(module_ocr._ocr_digits_with_conf(up_inv, 7))
 
-                # 2. 灰度 threshold 160
-                _, t160 = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
-                pipelines.append(("gray_t160", t160))
-
-                # 3. Otsu 自适应阈值
-                _, t_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                pipelines.append(("gray_otsu", t_otsu))
-
-                # 4. HSV 黄色通道（放宽阈值 + 膨胀增粗笔画）
-                hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-                yellow_mask = cv2.inRange(hsv, np.array([15, 40, 100]), np.array([45, 255, 255]))
-                kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-                yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
-                # 膨胀 1 次增粗抗锯齿导致的细笔画
-                yellow_mask = cv2.dilate(yellow_mask, kernel, iterations=1)
-                pipelines.append(("hsv_yellow", yellow_mask))
-
-                # 调试输出
-                if DEBUG_WRITE_FILES:
-                    cv2.imwrite("debug_ap_roi_raw.png", roi)
-                    cv2.imwrite("debug_ap_roi_gray_t150.png", t150)
-                    cv2.imwrite("debug_ap_roi_yellow_mask.png", yellow_mask)
-
-                # 对每个管线执行 OCR（PSM 7 单行模式）
-                for label, binary_img in pipelines:
-                    padded = cv2.copyMakeBorder(binary_img, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=0)
-                    up = cv2.resize(padded, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-                    up_inv = cv2.bitwise_not(up)
-                    text = pytesseract.image_to_string(
-                        up_inv, config="--psm 7 -c tessedit_char_whitelist=0123456789"
-                    ).strip()
-                    nums = re.findall(r"\d+", text)
-                    if nums:
-                        ocr_results.append(int(nums[0]))
-
-            # 投票（平票取最大值：OCR 更容易漏掉前导数字）
-            if ocr_results:
-                counter = Counter(ocr_results)
-                top_count = counter.most_common(1)[0][1]
-                tied = [val for val, cnt in counter.items() if cnt == top_count]
-                available_points = max(tied)
-                log_info(t("upgrade.ap_result", pts=available_points, raw=ocr_results, w=w, h=h))
-            else:
-                log_warning(t("upgrade.ap_no_digit"))
+        # 范围校验(0..999) + 置信度加权投票（跨帧 × 4 管线候选汇总）
+        voted = module_ocr._vote_skill_points(candidates)
+        if voted is not None:
+            available_points = voted
+            log_info(t("upgrade.ap_result", pts=available_points, raw=[v for v, _ in candidates], w=last_w, h=last_h))
+        else:
+            log_warning(t("upgrade.ap_no_digit"))
 
         if available_points >= 0 and available_points < min_points:
             log_warning(t("upgrade.ap_low", pts=available_points, min=min_points))

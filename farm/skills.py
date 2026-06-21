@@ -37,7 +37,6 @@ from colorama import Fore, Style
 import engine.ocr as module_ocr
 from engine.control import check_stop, interruptible_sleep
 from engine.i18n import t
-from engine.ocr import DEBUG_WRITE_FILES
 from engine.state_detect import get_detector
 from engine.utils import (
     find_game_window,
@@ -785,7 +784,7 @@ class FarmStateMachine:
             f"{Fore.BLUE}{t('farm.unknown_wait', state=state, count=self.unknown_consecutive_count)}{Style.RESET_ALL}"
         )
 
-        if self.unknown_consecutive_count % 5 == 1 and DEBUG_WRITE_FILES:
+        if self.unknown_consecutive_count % 5 == 1 and module_ocr.DEBUG_WRITE_FILES:
             os.makedirs("debug", exist_ok=True)
             try:
                 resized, img = self._capture_frame()

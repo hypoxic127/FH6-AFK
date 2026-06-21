@@ -115,7 +115,7 @@ python main_bot.py --web
 Before starting the bot, ensure the following:
 
 1. **Game language must be set to English** — OCR depends on English text
-2. **Windowed mode** — Windowed or Borderless Windowed (recommended: 2560×1440)
+2. **Windowed mode** — Windowed or Borderless Windowed (recommended: 2560×1440). Any **16:9** resolution works (including the default 1600×900) — the skill-points OCR region is tuned proportionally for 16:9. On a **non-16:9 monitor** or with a **non-default HUD scale**, if skill points are misread, use the Web UI **Calibrate** button to box the skill-points number and save your own ROI
 3. **Purchase main car** — `1998 Subaru Impreza 22B-STI Version`
 4. **Install S2 tune** — Any S2-class tune (PI badge = blue)
 5. **Favorite an EventLab blueprint** — Any blueprint works. The default share code `890169683` yields ~10 skill points per race

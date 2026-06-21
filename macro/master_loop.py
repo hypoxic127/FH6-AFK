@@ -17,6 +17,7 @@ from engine.control import (
     BotStoppedError,  # noqa: F401 — re-exported for web/server.py & macro/core.py & farm/skills.py
     check_stop,
     clear_stop,  # noqa: F401 — re-exported for web/server.py
+    interruptible_sleep,
     is_stop_requested,  # noqa: F401 — re-exported for截图层 (macro/core.py, farm/skills.py)
     request_stop,  # noqa: F401 — re-exported for web/server.py
 )
@@ -314,12 +315,20 @@ def run_master_bot_loop(
                             if detected_state == "CARS":
                                 log_success(t("loop.verify_cars_ok", state=detected_state))
                                 cars_found = True
-                                # 在 CARS 页读取技能点 (使用原始分辨率截图以保证 OCR 精确度)
-                                raw_img = capture_raw_screenshot(hwnd)
-                                if raw_img is not None:
-                                    pts = module_ocr.read_skill_points(raw_img)
-                                    if pts is not None:
-                                        detected_points = pts
+                                # 多帧共识读取技能点（静止数字，多帧应一致；滤掉瞬时漏读/读错）。
+                                # 偶发共识失败时本地补抓重试，避免因单次漏读误判已达标而提前结束刷图。
+                                for attempt in range(3):
+                                    frames = []
+                                    for _ in range(3):
+                                        fimg = capture_raw_screenshot(hwnd)
+                                        if fimg is not None:
+                                            frames.append(fimg)
+                                        interruptible_sleep(0.15)
+                                    detected_points = module_ocr.read_skill_points_stable(frames)
+                                    if detected_points is not None:
+                                        break
+                                    if attempt < 2:
+                                        log_warning(t("loop.verify_retry", n=attempt + 1))
                                 break
 
                             log_info(t("loop.verify_rb", n=rb_press + 1, state=detected_state))

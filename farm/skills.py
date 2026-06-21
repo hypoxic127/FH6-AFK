@@ -235,12 +235,17 @@ class FarmStateMachine:
         # 状态标志
         self.is_racing: bool = False
         self.entering_race: bool = False
+        # 已锁定进入 EventLab（位于 CREATIVE_HUB→FAVORITES 之间的空档）：
+        # 锁定后忽略其它菜单标签，避免过渡画面误判触发 RB 翻页而离开 EventLab 入口。
+        self.entering_eventlab: bool = False
+        self._eventlab_tab_skips: int = 0  # 锁定期间连续忽略标签的计数（卡死兜底用）
         self.waiting_for_next: bool = False
         self.waiting_for_gameplay: bool = False
         self._wait_next_start: float = 0.0  # 进入 waiting_for_next 的时间戳
         self._wait_next_debug_saved: bool = False  # 本次等待是否已存过卡死调试图
         self.points_scanned: bool = False
         self.ocr_fail_count: int = 0
+        self._sp_samples: list[int] = []  # 跨 tick 累积的技能点读数（多帧共识用）
 
         # 计数器
         self.matches_needed: int = 0
@@ -402,6 +407,7 @@ class FarmStateMachine:
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
             self.is_racing = False
             self.entering_race = True  # 防止过渡画面误识别为菜单标签（如 STORE）触发 RB
+            self.entering_eventlab = False
             interruptible_sleep(3.0)
         else:
             log_success(t("farm.all_done", count=self.matches_completed))
@@ -416,6 +422,15 @@ class FarmStateMachine:
     _WAIT_NEXT_RETRY_INTERVAL: float = 5.0  # 超时后重试按 A 间隔
     _WAIT_NEXT_FORCE_EXIT: float = 60.0  # 强制退出阈值
     _WAIT_NEXT_DEBUG_SNAPSHOT: float = 30.0  # 卡死超此秒数则自动存一次全屏图供排查
+
+    # 锁定 EventLab 期间连续忽略菜单标签的上限，超过则解锁恢复正常扫描（卡死兜底）
+    _EVENTLAB_LOCK_MAX_SKIPS: int = 12
+    # 锁定期间被忽略的顶部菜单标签（不含 CREATIVE_HUB——需可重按 A 进入）
+    _MENU_TABS: frozenset[str] = frozenset({"CARS", "CAMPAIGN", "MY HORIZON", "ONLINE", "STORE"})
+
+    # 技能点跨 tick 共识：同值达 _SP_MIN_AGREEMENT 次才提交；累计满 _SP_MAX_SAMPLES 仍未达成则取众数兜底
+    _SP_MIN_AGREEMENT: int = 3
+    _SP_MAX_SAMPLES: int = 7
 
     def _handle_waiting_next(self, resized: np.ndarray) -> None:
         """Wait for the 'What's Next' screen after reward animation.
@@ -558,6 +573,7 @@ class FarmStateMachine:
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_X, delay=1.0)
                     press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=0)
                     self.entering_race = True  # 防止过渡画面误识别为菜单标签
+                    self.entering_eventlab = False
                     time.sleep(3.0)
                 else:
                     log_success(t("farm.all_done", count=self.matches_completed))
@@ -593,6 +609,12 @@ class FarmStateMachine:
                 press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.5)
                 return
 
+        # 已锁定进入 EventLab：忽略其它顶部菜单标签，避免过渡画面误判触发 RB 翻页离开入口。
+        # 注意不含 CREATIVE_HUB——若 A 没按进、再次看到它仍会走 _on_creative_hub 重按 A。
+        if self.entering_eventlab and state in self._MENU_TABS:
+            self._on_eventlab_locked(state)
+            return
+
         if state == "CARS" and not self.entering_race:
             self._on_cars_tab(img)
         elif state in ["CAMPAIGN", "MY HORIZON", "ONLINE", "STORE"] and not self.entering_race:
@@ -614,31 +636,49 @@ class FarmStateMachine:
         else:
             self._on_unknown(state)
 
+    def _commit_skill_points(self, points: int) -> None:
+        """确认技能点读数：设置 matches_needed、保存进度并推进（或在已满时退出）。"""
+        self.ocr_fail_count = 0
+        self._sp_samples.clear()
+        self.matches_needed = get_matches_needed(points)
+        safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+        safe_print(t("farm.scan_ok_title"))
+        safe_print(t("farm.scan_ok_points", pts=points))
+        safe_print(t("farm.scan_ok_needed", count=self.matches_needed))
+        safe_print("==========================================\n")
+        self.points_scanned = True
+        save_race_state(self.matches_needed, self.matches_completed)
+
+        if self.matches_needed <= 0:
+            safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
+            safe_print(t("farm.already_full_title"))
+            safe_print(t("farm.already_full_desc", pts=points))
+            safe_print("==========================================\n")
+            self.should_exit = True
+            return
+
+        safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
+        press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
+
     def _on_cars_tab(self, img: np.ndarray) -> None:
-        """CARS 标签页：OCR 读取技能点并决定后续操作。"""
+        """CARS 标签页：OCR 读取技能点。跨 tick 累积共识，避免单帧误读污染整局。"""
         safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.cars_scan')}{Style.RESET_ALL}")
+        from collections import Counter
+
         detected_points = module_ocr.read_skill_points(img)
         if detected_points is not None:
-            self.ocr_fail_count = 0  # 成功后重置计数
-            self.matches_needed = get_matches_needed(detected_points)
-            safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-            safe_print(t("farm.scan_ok_title"))
-            safe_print(t("farm.scan_ok_points", pts=detected_points))
-            safe_print(t("farm.scan_ok_needed", count=self.matches_needed))
-            safe_print("==========================================\n")
-            self.points_scanned = True
-            save_race_state(self.matches_needed, self.matches_completed)
+            self.ocr_fail_count = 0
+            self._sp_samples.append(detected_points)
+            if len(self._sp_samples) > self._SP_MAX_SAMPLES:
+                self._sp_samples = self._sp_samples[-self._SP_MAX_SAMPLES :]
 
-            if self.matches_needed <= 0:
-                safe_print(f"\n{Fore.GREEN}{Style.BRIGHT}==========================================")
-                safe_print(t("farm.already_full_title"))
-                safe_print(t("farm.already_full_desc", pts=detected_points))
-                safe_print("==========================================\n")
-                self.should_exit = True
-                return
-
-            safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
-            press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
+            value, count = Counter(self._sp_samples).most_common(1)[0]
+            # 某值达成共识，或累计已满（取众数兜底）→ 提交；否则停在 CARS 逐帧复读
+            if count >= self._SP_MIN_AGREEMENT or len(self._sp_samples) >= self._SP_MAX_SAMPLES:
+                self._commit_skill_points(value)
+            else:
+                log_info(t("farm.sp_consensus_pending", val=detected_points, have=count, need=self._SP_MIN_AGREEMENT))
+                interruptible_sleep(0.2)  # 略等下一帧，不按 RB（保持在 CARS 页复读）
         else:
             if not self.points_scanned:
                 self.ocr_fail_count += 1
@@ -646,15 +686,10 @@ class FarmStateMachine:
                     log_warning(
                         "OCR failed to read skill points 10 times consecutively. Assuming zero points as fallback to avoid infinite loops."
                     )
-                    # 假装读取到0点
-                    self.matches_needed = get_matches_needed(0)
-                    self.points_scanned = True
-                    save_race_state(self.matches_needed, self.matches_completed)
-                    safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
-                    press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
+                    self._commit_skill_points(0)  # 假装读到 0 点，避免无限循环
                 else:
                     log_warning(t("farm.ocr_fail_retry"))
-                    time.sleep(0.5)
+                    interruptible_sleep(0.5)
             else:
                 log_warning(t("farm.ocr_fail_use", count=self.matches_needed))
                 safe_print(f"{Fore.YELLOW}{t('farm.cars_shift_rb')}{Style.RESET_ALL}")
@@ -671,11 +706,27 @@ class FarmStateMachine:
             safe_print(f"{Fore.YELLOW}{t('farm.hub_bypass')}{Style.RESET_ALL}")
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER, delay=0.5)
         else:
+            # 已到达 CREATIVE_HUB：锁定 EventLab 入口，此后忽略其它菜单标签（不再按 RB 翻页）
+            self.entering_eventlab = True
+            self._eventlab_tab_skips = 0
             safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.hub_enter')}{Style.RESET_ALL}")
             press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
 
+    def _on_eventlab_locked(self, state: str) -> None:
+        """锁定 EventLab 期间检测到菜单标签：忽略（不按键），仅做卡死兜底。"""
+        self._eventlab_tab_skips += 1
+        if self._eventlab_tab_skips >= self._EVENTLAB_LOCK_MAX_SKIPS:
+            # 长时间未进入 EventLab（A 可能始终没生效）→ 解锁，下一帧恢复正常标签扫描
+            log_warning(t("farm.eventlab_lock_timeout"))
+            self.entering_eventlab = False
+            self._eventlab_tab_skips = 0
+            return
+        log_info(t("farm.eventlab_lock_skip", state=state))
+        interruptible_sleep(0.3)  # 避免空转忙循环；可被停止信号立即唤醒
+
     def _on_eventlab_menu(self) -> None:
         """EventLab 菜单：选择 Play Event。"""
+        self._eventlab_tab_skips = 0  # 已进入 EventLab，进展信号 → 重置兜底计数
         safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.eventlab_menu')}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
 
@@ -687,6 +738,7 @@ class FarmStateMachine:
     def _on_favorites_list(self) -> None:
         """My Favorites 列表：选中蓝图并进入。"""
         self.entering_race = True
+        self.entering_eventlab = False  # 已进入赛事流程，标签由 entering_race 统一屏蔽
         safe_print(f"{Fore.GREEN}{Style.BRIGHT}{t('farm.favorites')}{Style.RESET_ALL}")
         press_button(self.gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=3.0)
 

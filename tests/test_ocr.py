@@ -9,10 +9,14 @@ tests/test_ocr.py — engine/ocr.py 单元测试
   - is_empty_slot() 空位检测（合成图像）
 """
 
+from unittest.mock import Mock
+
 import cv2
 import numpy as np
+import pytesseract
 import pytest
 
+from engine import ocr
 from engine.ocr import (
     BRAND_TAB_ROI_X,
     BRAND_TAB_ROI_Y,
@@ -202,3 +206,89 @@ class TestIsEmptySlot:
     def test_none_returns_true(self) -> None:
         """None 输入应安全返回 True（保守策略）。"""
         assert is_empty_slot(None, 0, 0)
+
+
+# ==========================================
+# 技能点 OCR：置信度加权投票（纯函数）
+# ==========================================
+
+
+class TestVoteSkillPoints:
+    """_vote_skill_points：范围校验 + 置信度加权投票。"""
+
+    def test_empty_returns_none(self) -> None:
+        assert ocr._vote_skill_points([]) is None
+
+    def test_filters_out_of_range(self) -> None:
+        """>999 的垃圾 4 位读数被过滤，正确 3 位胜出（杀「读高」）。"""
+        assert ocr._vote_skill_points([(9991, 95.0), (999, 90.0)]) == 999
+
+    def test_all_out_of_range_returns_none(self) -> None:
+        assert ocr._vote_skill_points([(1000, 99.0), (-5, 99.0)]) is None
+
+    def test_confidence_outweighs_single_low(self) -> None:
+        """高置信度值胜过单条低置信度值。"""
+        assert ocr._vote_skill_points([(99, 10.0), (100, 80.0)]) == 100
+
+    def test_frequency_via_confidence_sum(self) -> None:
+        """同值多次出现 → 置信度求和占优。"""
+        assert ocr._vote_skill_points([(99, 80.0), (99, 80.0), (999, 80.0)]) == 99
+
+    def test_zero_is_valid(self) -> None:
+        assert ocr._vote_skill_points([(0, 95.0)]) == 0
+
+
+# ==========================================
+# 技能点 OCR：范围校验 + 精简变体（集成，mock pytesseract）
+# ==========================================
+
+
+class TestReadSkillPointsRobustness:
+    @staticmethod
+    def _img() -> np.ndarray:
+        # 默认 ROI 比例在 1440p 图上裁剪非空即可（OCR 已被 mock）
+        return np.full((1440, 2560, 3), 178, dtype=np.uint8)
+
+    def test_range_clamp_drops_4digit(self, monkeypatch) -> None:
+        """4 位垃圾 + 正确 3 位 → 返回 3 位（范围校验生效）。"""
+        monkeypatch.setattr("engine.runtime.load_bot_config", lambda: {})
+        monkeypatch.setattr(
+            pytesseract,
+            "image_to_data",
+            lambda *a, **k: {"text": ["9991", "999"], "conf": ["95", "90"]},
+        )
+        assert ocr.read_skill_points(self._img()) == 999
+
+    def test_single_frame_runs_lean_variant_set(self, monkeypatch) -> None:
+        """单帧只跑 4 轮 OCR（2 变体 × 2 PSM），防回归到 12 轮。"""
+        monkeypatch.setattr("engine.runtime.load_bot_config", lambda: {})
+        data_mock = Mock(return_value={"text": [""], "conf": ["-1"]})
+        monkeypatch.setattr(pytesseract, "image_to_data", data_mock)
+        monkeypatch.setattr(pytesseract, "image_to_string", lambda *a, **k: "")
+        assert ocr.read_skill_points(self._img()) is None
+        assert data_mock.call_count == 4
+
+
+# ==========================================
+# 技能点 OCR：多帧共识
+# ==========================================
+
+
+class TestReadSkillPointsStable:
+    def test_consensus_returns_agreed_value(self, monkeypatch) -> None:
+        monkeypatch.setattr(ocr, "read_skill_points", Mock(side_effect=[999, 999, 99, None, 999]))
+        assert ocr.read_skill_points_stable([object()] * 5, min_agreement=2) == 999
+
+    def test_insufficient_agreement_returns_none(self, monkeypatch) -> None:
+        monkeypatch.setattr(ocr, "read_skill_points", Mock(side_effect=[10, 20, 30]))
+        assert ocr.read_skill_points_stable([object()] * 3, min_agreement=2) is None
+
+    def test_all_none_returns_none(self, monkeypatch) -> None:
+        monkeypatch.setattr(ocr, "read_skill_points", Mock(return_value=None))
+        assert ocr.read_skill_points_stable([object()] * 3) is None
+
+    def test_skips_none_images(self, monkeypatch) -> None:
+        rp = Mock(side_effect=[999, 999])
+        monkeypatch.setattr(ocr, "read_skill_points", rp)
+        assert ocr.read_skill_points_stable([None, object(), None, object()], min_agreement=2) == 999
+        assert rp.call_count == 2

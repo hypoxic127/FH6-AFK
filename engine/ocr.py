@@ -45,6 +45,12 @@ def enable_debug_files() -> None:
     DEBUG_WRITE_FILES = True
 
 
+# 也支持通过环境变量开启（便于打包后的 .exe 用户在自己的分辨率下采集调试图，
+# 为 Phase 2 的自动 ROI 定位提供真实样本）：set FH6_DEBUG_OCR=1
+if os.environ.get("FH6_DEBUG_OCR", "").strip().lower() in ("1", "true", "yes", "on"):
+    DEBUG_WRITE_FILES = True
+
+
 # ==========================================
 # HSV 颜色阈值常量（全局唯一真相源）
 # ==========================================
@@ -502,19 +508,100 @@ def _find_tesseract_in_registry() -> str | None:
 # 二、技能点 OCR 读取
 # ==========================================
 
+# 技能点取值上限：用于范围校验，过滤明显误读（如 4 位垃圾读数）。
+# 注意：engine 层不能 import macro.core 的 MAX_SKILL_POINTS（会破坏分层），此处本地定义。
+SKILL_POINTS_MAX: int = 999
+
+# 精简的单帧 OCR 组合（为多帧共识腾性能、防卡顿）：
+#   2 种二值化（otsu + fixed-120）× 2 种 PSM（7=单行, 8=单词）= 4 轮/帧。
+# 去掉了 adaptive（干净 UI 收益低且偏慢）以及 PSM 6/13。
+_SP_PSM_MODES: tuple[int, ...] = (7, 8)
+
+# 多帧共识所需的最少一致票数（技能点是静止数字，多帧应一致）
+_SP_MIN_AGREEMENT: int = 2
+
+
+def _ocr_digits_with_conf(up_img: np.ndarray, psm: int) -> list[tuple[int, float]]:
+    """对单张预处理图跑一次数字 OCR，返回 [(值, 置信度), ...]。
+
+    使用 image_to_data 以拿到 Tesseract 的逐 token 置信度（image_to_string 会丢弃它）。
+    非数字 token 跳过；置信度无法解析时记为 -1。
+    """
+    config = f"--psm {psm} -c tessedit_char_whitelist=0123456789"
+    data = pytesseract.image_to_data(up_img, config=config, output_type=pytesseract.Output.DICT)
+    out: list[tuple[int, float]] = []
+    for txt, conf in zip(data.get("text", []), data.get("conf", [])):
+        token = (txt or "").strip()
+        if not token.isdigit():
+            continue
+        try:
+            c = float(conf)
+        except (TypeError, ValueError):
+            c = -1.0
+        out.append((int(token), c))
+    return out
+
+
+def _vote_skill_points(candidates: list[tuple[int, float]]) -> int | None:
+    """对 (值, 置信度) 候选投票，返回最可能的技能点值（纯函数，便于单测）。
+
+    规则：
+      1. 先按取值范围 [0, SKILL_POINTS_MAX] 过滤（直接杀掉 4 位垃圾「读高」）。
+      2. 按「置信度之和」打分——频次天然体现在求和里（同值出现越多、越可信，分越高）。
+      3. 取最高分；平手时优先位数多、再优先单条最高置信度。
+    """
+    from collections import defaultdict
+
+    valid = [(v, c) for (v, c) in candidates if 0 <= v <= SKILL_POINTS_MAX]
+    if not valid:
+        return None
+
+    score: dict[int, float] = defaultdict(float)
+    best_conf: dict[int, float] = defaultdict(float)
+    for v, c in valid:
+        score[v] += max(c, 0.0)
+        if c > best_conf[v]:
+            best_conf[v] = c
+
+    return max(score, key=lambda v: (score[v], len(str(v)), best_conf[v]))
+
+
+def read_skill_points_stable(images: list[np.ndarray], min_agreement: int = _SP_MIN_AGREEMENT) -> int | None:
+    """多帧共识读取：对每帧分别 OCR，某值出现次数达 min_agreement 才返回，否则 None。
+
+    技能点在 CARS 页是静止数字，多帧应一致；共识能滤掉单帧的瞬时漏读/读错。
+    纯函数（接收图像列表），多帧抓取由调用方（macro/farm）完成，保持 engine 层不反向依赖。
+    """
+    from collections import Counter
+
+    readings: list[int] = []
+    for im in images:
+        if im is None:
+            continue
+        v = read_skill_points(im)
+        if v is not None:
+            readings.append(v)
+    if not readings:
+        return None
+    val, count = Counter(readings).most_common(1)[0]
+    return val if count >= min_agreement else None
+
 
 def read_skill_points(img: np.ndarray) -> int | None:
     """
     从游戏画面中 OCR 识别当前的技能点数字。
 
     技能点显示在暂停菜单 CARS 标签页的左侧区域。
-    本函数使用多策略 OCR + 投票机制来提高识别准确率：
+    本函数使用精简多策略 OCR + 置信度加权投票来提高识别准确率：
 
     处理流程：
-    1. 根据 2560×1440 参考分辨率的比例坐标裁剪技能点区域
-    2. 灰度化 → Otsu 自适应阈值二值化 → 加边距 → 放大 3 倍
-    3. 使用 PSM 7（单行文本模式）识别数字，精度最高
-    4. 零技能点保底：如果 PSM 7 返回 0 或无结果，使用无限制 OCR 检测 "No Skill Points Available"
+    1. 根据比例坐标（custom_roi 优先）裁剪技能点区域
+    2. 灰度化 → 2 种二值化（otsu + fixed-120）→ 去竖线 → 加边距 → 放大 4 倍
+    3. 每变体跑 PSM 7/8 两种模式，用 image_to_data 取每个数字 token 的置信度
+    4. 范围校验（0..SKILL_POINTS_MAX）+ 置信度加权投票（_vote_skill_points）
+    5. 零技能点保底：无候选时用无限制 OCR 检测 "No Skill Points Available"
+
+    注意：单帧只跑 4 轮（2 变体 × 2 PSM），为多帧共识（read_skill_points_stable）腾性能。
 
     参数:
         img: BGR 格式的游戏画面截图（原始分辨率）
@@ -540,8 +627,8 @@ def read_skill_points(img: np.ndarray) -> int | None:
         crop_y1 = int(h * 0.7244)
         crop_y2 = int(h * 0.7611)
         crop_x1 = int(w * 0.28)
-        # 适当放宽右边界，确保能完整容纳三位数字（如 999），避免因为截断导致第三个数字丢失而识别成两位数
-        crop_x2 = int(w * 0.307)
+        # 右边界：0.31 为容纳第三位数字的实测下限（0.307 会把如 976 的 "6" 裁掉半截 → 误读成 97）
+        crop_x2 = int(w * 0.313)
 
     roi = img[crop_y1:crop_y2, crop_x1:crop_x2]
     if roi.size == 0:
@@ -555,7 +642,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
         except OSError as e:
             log_warning(t("ocr.debug_write_fail", path="skill_points_roi.png", err=e))
 
-    # 图像预处理：3 种针对「蓝/青底黑字」优化的二值化方法
+    # 图像预处理：2 种针对「蓝/青底黑字」优化的二值化方法（精简集，为多帧共识腾性能）
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
     def _auto_polarity(thresh: np.ndarray) -> np.ndarray:
@@ -583,11 +670,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     thresh_otsu = _remove_vertical_lines(_auto_polarity(thresh_otsu))
 
-    # --- 方法 B: 自适应高斯阈值（抗局部光照渐变，对阴影/反光鲁棒） ---
-    thresh_adapt = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 5)
-    thresh_adapt = _remove_vertical_lines(_auto_polarity(thresh_adapt))
-
-    # --- 方法 C: 固定阈值 120（蓝底黑字专用） ---
+    # --- 方法 B: 固定阈值 120（蓝底黑字专用） ---
     # 背景 #2AECF3 (灰度值≈178)，黑色数字 (灰度值≈0)，阈值 120 干净分离
     _, thresh_fixed = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
     thresh_fixed = _remove_vertical_lines(_auto_polarity(thresh_fixed))
@@ -595,7 +678,7 @@ def read_skill_points(img: np.ndarray) -> int | None:
     # 对每种变体：加大边距（40px 白色）+ 放大 4 倍
     # 注意：必须使用 INTER_LINEAR，INTER_CUBIC 在 4x 时会导致字形失真
     preprocessed: list[tuple[str, np.ndarray]] = []
-    for label, thresh_img in [("otsu", thresh_otsu), ("adaptive", thresh_adapt), ("fixed", thresh_fixed)]:
+    for label, thresh_img in [("otsu", thresh_otsu), ("fixed", thresh_fixed)]:
         padded = cv2.copyMakeBorder(thresh_img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
         upscaled = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_LINEAR)
         preprocessed.append((label, upscaled))
@@ -609,34 +692,22 @@ def read_skill_points(img: np.ndarray) -> int | None:
         except OSError as e:
             log_warning(t("ocr.debug_write_fail", path="skill_points_*.png", err=e))
 
-    # ===== OCR 多策略投票 =====
-    # 3 种预处理 × 4 种 PSM 模式 = 12 轮识别，取位数最长且出现最多的结果
-    # PSM 6 = 自动分割, 7 = 单行, 8 = 单词, 13 = 原始行
-    candidates: list[int] = []
+    # ===== 精简多策略 OCR + 置信度加权投票 =====
+    # 2 种预处理 × 2 种 PSM 模式 = 4 轮识别（PSM 7=单行, 8=单词）。
+    # 用 image_to_data 取每个数字 token 的置信度，范围校验后交给 _vote_skill_points 投票。
+    candidates: list[tuple[int, float]] = []
     for label, up_img in preprocessed:
-        for psm in (6, 7, 8, 13):
-            config = f"--psm {psm} -c tessedit_char_whitelist=0123456789"
+        for psm in _SP_PSM_MODES:
             try:
-                text = pytesseract.image_to_string(up_img, config=config).strip()
-                if text.isdigit():
-                    val = int(text)
-                    candidates.append(val)
-                    safe_print(f"{Fore.CYAN}   [OCR] {label}/PSM{psm} → {val}{Style.RESET_ALL}")
+                for val, conf in _ocr_digits_with_conf(up_img, psm):
+                    candidates.append((val, conf))
+                    safe_print(f"{Fore.CYAN}   [OCR] {label}/PSM{psm} → {val} (conf={conf:.0f}){Style.RESET_ALL}")
             except pytesseract.TesseractError as e:
                 log_warning(t("ocr.psm_error", psm=psm, err=e))
 
-    if candidates:
-        # 策略：先按位数降序分组，取位数最长的一组；组内取出现次数最多的值
-        max_digits = max(len(str(v)) for v in candidates)
-        longest_group = [v for v in candidates if len(str(v)) == max_digits]
-        # 计数投票
-        from collections import Counter
-
-        vote = Counter(longest_group)
-        best_val, count = vote.most_common(1)[0]
-        safe_print(
-            f"{Fore.GREEN}{t('ocr.final_result', val=best_val)} (votes: {count}/{len(candidates)}){Style.RESET_ALL}"
-        )
+    best_val = _vote_skill_points(candidates)
+    if best_val is not None:
+        safe_print(f"{Fore.GREEN}{t('ocr.final_result', val=best_val)} (from {len(candidates)} reads){Style.RESET_ALL}")
         if best_val > 0:
             return best_val
 

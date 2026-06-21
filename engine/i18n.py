@@ -296,6 +296,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "OCR failed to read skill points on CARS tab. Enforcing initial scan, retrying on next frame...",
         "zh": "CARS 标签页 OCR 读取技能点失败。强制初始扫描，下帧重试...",
     },
+    "farm.sp_consensus_pending": {
+        "en": "[CARS] Skill points read {val} — building consensus ({have}/{need})...",
+        "zh": "[CARS] 技能点读数 {val}——正在累积共识 ({have}/{need})...",
+    },
     "farm.ocr_fail_use": {
         "en": "OCR failed. Using current matches_needed: {count}",
         "zh": "OCR 失败。使用当前 matches_needed: {count}",
@@ -311,6 +315,14 @@ _STRINGS: dict[str, dict[str, str]] = {
     "farm.hub_enter": {
         "en": "[STATE: CREATIVE_HUB] Arrived at Creative Hub! Entering EventLab (A)...",
         "zh": "[状态: CREATIVE_HUB] 到达 Creative Hub！进入 EventLab (A)...",
+    },
+    "farm.eventlab_lock_skip": {
+        "en": "[EventLab locked] Ignoring menu tab '{state}' (not scanning tabs anymore)...",
+        "zh": "[已锁定 EventLab] 忽略菜单标签 '{state}'（不再扫描标签）...",
+    },
+    "farm.eventlab_lock_timeout": {
+        "en": "[EventLab locked] Entry stalled — resuming menu scan.",
+        "zh": "[已锁定 EventLab] 入口长时间无进展——恢复菜单扫描。",
     },
     "farm.eventlab_menu": {
         "en": "[STATE: EVENTLAB_MENU] Entering EventLab menu, selecting Play Event (A)...",
@@ -773,6 +785,10 @@ _STRINGS: dict[str, dict[str, str]] = {
     "loop.verify_ocr_fail": {
         "en": "  ⚠️ OCR could not read skill points, assuming target reached...",
         "zh": "  ⚠️ OCR 无法读取技能点，假设已达标继续...",
+    },
+    "loop.verify_retry": {
+        "en": "  ⚠️ Skill-points consensus failed (attempt {n}), recapturing...",
+        "zh": "  ⚠️ 技能点多帧共识失败（第 {n} 次），重新抓取中...",
     },
     "loop.farm_done": {
         "en": "Farm phase completed! Skill points verified at {max}!",

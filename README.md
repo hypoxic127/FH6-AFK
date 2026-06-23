@@ -1,29 +1,121 @@
-# 🏎️ FH6 AutoBot — A Never-Ending AFK Farming Machine
+# 🏎️ FH6 AutoBot
 
 **🌐 Language: English | [中文](README_zh-CN.md)**
 
+> **An autonomous bot that plays Forza Horizon 6 with zero human input.**
+> It *perceives* the game through **computer vision** (OpenCV + Tesseract OCR + color
+> histograms) and *acts* through a **virtual Xbox 360 controller** (ViGEmBus) — closing a
+> self-driving **farm → buy → upgrade → sell** loop that runs forever. Monitor and control it
+> from a **real-time web dashboard**, even from your phone.
+
 [![CI](https://github.com/hypoxic127/FH6-AFK/actions/workflows/ci.yml/badge.svg)](https://github.com/hypoxic127/FH6-AFK/actions/workflows/ci.yml)
 [![Release](https://github.com/hypoxic127/FH6-AFK/actions/workflows/release.yml/badge.svg)](https://github.com/hypoxic127/FH6-AFK/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/hypoxic127/FH6-AFK?color=success&logo=github)](https://github.com/hypoxic127/FH6-AFK/releases/latest)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4?logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/license-Personal%20Use-f5c542)
+[![Stars](https://img.shields.io/github/stars/hypoxic127/FH6-AFK?style=social)](https://github.com/hypoxic127/FH6-AFK/stargazers)
 
-> A fully automated, infinite-loop Skill Points farming system for **Forza Horizon 6**.
-> Powered by **Computer Vision (OpenCV + Tesseract OCR)** and **Virtual Gamepad (ViGEmBus)**, achieving **zero human intervention** closed-loop farming.
-> Comes with a **Cyberpunk-styled Web UI** dashboard for remote monitoring and one-click control.
+**🎯 Zero human intervention &nbsp;·&nbsp; 👁️ CV-based perception &nbsp;·&nbsp; 🤖 Virtual-gamepad actuation &nbsp;·&nbsp; 🛡️ Self-healing capture &nbsp;·&nbsp; 📦 One-click `.exe` &nbsp;·&nbsp; 🧪 170+ tests**
+
+---
+
+## 🎬 Demo
+
+<!--
+  Record a short (10-20s) screen capture of one full loop tick — state detection,
+  the bot navigating a menu, and the live log updating — export it as docs/demo.gif,
+  and it will render here automatically. A GIF is the single highest-converting
+  element in a README; keep it under ~10 MB so GitHub inlines it.
+-->
+<p align="center">
+  <img src="docs/demo.gif" alt="FH6 AutoBot — autonomous farm loop in action" width="640">
+</p>
+
+<p align="center"><sub><em>The bot farming skill points, buying, upgrading, and selling cars — hands-free.</em></sub></p>
+
+---
+
+## 📸 Dashboard
+
+<!-- Capture the web UI at http://localhost:6800 (with the bot running so the log
+     stream and counters are populated) and save it as docs/dashboard.png. -->
+<p align="center">
+  <img src="docs/dashboard.png" alt="FH6 AutoBot — Web UI Dashboard" width="820">
+</p>
+
+> Live stage tracking, loop & super-wheelspin counters, a syntax-highlighted log stream, and a QR
+> code for phone monitoring — all served locally at `http://localhost:6800`.
+
+---
+
+## 🏛️ How It Works
+
+FH6 AutoBot is a closed perception → decision → actuation loop. Every tick, it captures the game
+window, decides what state the game is in, and issues controller input — no human in the loop.
+
+```
+   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
+   │  PERCEPTION  │ ─────▶ │   DECISION   │ ─────▶ │  ACTUATION   │
+   │  see         │        │  decide      │        │  act         │
+   ├──────────────┤        ├──────────────┤        ├──────────────┤
+   │ MSS capture  │        │ State machine│        │ Virtual Xbox │
+   │ OpenCV + OCR │        │ (4 stages)   │        │ 360 pad      │
+   │ histograms   │        │ + sub-FSMs   │        │ (ViGEmBus)   │
+   └──────────────┘        └──────────────┘        └──────────────┘
+          ▲                                                │
+          └────────────────  game window  ◀────────────────┘
+```
+
+The codebase is organized as **four layers with a strict one-way dependency direction**
+(`web → macro / farm → engine`, never the reverse), so perception never depends on the UI:
+
+| Layer | Responsibility |
+|:------|:---------------|
+| **`engine/`** | Perception + infrastructure — OCR, hybrid state detection, screen capture, gamepad, logging, i18n, auto-updater |
+| **`macro/`** | The automation — the master state machine plus per-stage menu macros (navigate / purchase / garage / upgrade) |
+| **`farm/`** | A self-contained visual sub-state-machine that auto-drives an EventLab race to completion |
+| **`web/`** | Flask + SocketIO server and the vanilla-JS dashboard |
+
+A thread-safe **event bus** decouples the bot from the UI entirely: engine/macro code *emits*
+events (`log`, `state_change`, `bot_started`, …) and never imports `web`; the server subscribes and
+forwards them to the browser over WebSocket.
+
+---
+
+## ⭐ Why This Is Interesting
+
+A few engineering details that make this more than a click-recorder:
+
+- **12-pass OCR voting** — every skill-point read runs 3 preprocessing variants × 4 Tesseract PSM
+  modes and votes on the most frequent longest-digit result, so a single bad frame can't derail it.
+- **Histogram + OCR hybrid state detection** — fast color-distribution screening narrows the
+  candidate states, then OCR confirms — cheap *and* robust against 10+ visually similar menus.
+- **Self-healing screen capture** — when a BitBlt/GDI capture fails, the bot resets the MSS instance
+  and pulls the game window back to the foreground instead of silently feeding on black frames.
+- **Cooperative-first safe stop** — a shared flag is checked at safe points so the bot always halts
+  on a clean boundary (gamepad released, never mid-keypress); async exception injection is a
+  fallback used only when a native call (e.g. a Tesseract subprocess) is blocking.
+- **Transactional auto-updater** — integer-tuple version comparison, multi-mirror download with a
+  rollback-on-failure file swap, and a restart guard that filters `--update` from `argv`.
 
 ---
 
 ## 📋 Table of Contents
 
+- [🎬 Demo](#-demo)
+- [📸 Dashboard](#-dashboard)
+- [🏛️ How It Works](#️-how-it-works)
+- [⭐ Why This Is Interesting](#-why-this-is-interesting)
 - [✨ Features](#-features)
 - [🔄 Workflow](#-workflow)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [🚀 Getting Started](#-getting-started)
 - [📖 Usage](#-usage)
 - [📁 Project Structure](#-project-structure)
-- [🧪 Testing & CI](#-testing--ci)
 - [🔍 Technical Details](#-technical-details)
+- [🗺️ Roadmap](#️-roadmap)
+- [🧪 Testing & CI](#-testing--ci)
 - [🤝 Contributing](#-contributing)
 - [📝 License](#-license)
 
@@ -33,17 +125,17 @@
 
 | Feature | Description |
 |:--------|:------------|
-| 🔁 **4-Stage Auto Loop** | Farm → Buy → Upgrade → Sell, infinite loop, sleep & farm |
-| 👁️ **Computer Vision State Machine** | Color histogram + OCR hybrid detection, identifies 10+ game UI states |
-| 🎮 **Virtual Gamepad** | ViGEmBus simulates Xbox 360 controller, native-level input |
-| 🖥️ **Web UI Dashboard** | Glassmorphism UI + real-time logs + QR code mobile monitoring |
-| ⏹️ **Safe Instant Stop** | Cooperative checkpoints stop the bot instantly **and** cleanly (gamepad released, capture reset); async-injection only as a fallback when a native call is blocking |
-| 🔄 **Auto-Update** | GitHub Releases auto-update with multi-mirror download, one-click update via Web UI or `--update` flag |
+| 🔁 **4-Stage Auto Loop** | Farm → Buy → Upgrade → Sell, infinite loop — sleep while it farms |
+| 👁️ **Computer-Vision State Machine** | Color histogram + OCR hybrid detection across 10+ game UI states |
+| 🎮 **Virtual Gamepad** | ViGEmBus emulates an Xbox 360 controller for native-level input |
+| 🖥️ **Web Dashboard** | Glassmorphism UI + real-time logs + QR-code mobile monitoring |
+| ⏹️ **Safe Instant Stop** | Cooperative checkpoints stop the bot instantly **and** cleanly; async injection only as a fallback |
+| 🔄 **Auto-Update** | GitHub Releases auto-update with multi-mirror download, one-click from the Web UI or `--update` |
 | 🛡️ **Self-Healing Capture** | BitBlt failure auto-recovery with MSS reset + window re-foreground |
-| ✅ **Startup Pre-Flight** | Verifies Tesseract is available before running — clear exit message instead of an infinite retry loop |
-| 🎰 **Super Wheelspin Counter** | Automatically tracks upgrade macro executions |
+| ✅ **Startup Pre-Flight** | Verifies Tesseract is available before running — a clear exit instead of an infinite retry loop |
+| 🎰 **Super-Wheelspin Counter** | Automatically tracks upgrade-macro executions |
 | 📦 **One-Click Build** | PyInstaller single-file `.exe`, no Python required |
-| 🧪 **170+ Test Cases** | Ruff linting + Pytest coverage, GitHub Actions CI |
+| 🧪 **170+ Test Cases** | Ruff linting + Pytest coverage on GitHub Actions CI |
 
 ---
 
@@ -63,8 +155,8 @@
 |:-----:|:---------------|:------------|
 | 1️⃣ | `STATE_FARM_POINTS` | OCR scans skill points → auto-enters EventLab to farm up to 999 |
 | 2️⃣ | `STATE_BUY_CARS` | Five-step visual navigation → batch-purchase 33 Subaru Impreza 22B-STIs |
-| 3️⃣ | `STATE_UPGRADE_CARS` | Select each car with NEW tag → spend skill points on skill tree |
-| 4️⃣ | `STATE_TRASH_CARS` | Batch-remove upgraded Imprezas (keeping S2 main car) |
+| 3️⃣ | `STATE_UPGRADE_CARS` | Select each car with a NEW tag → spend skill points on the skill tree |
+| 4️⃣ | `STATE_TRASH_CARS` | Batch-remove upgraded Imprezas (keeping the S2 main car) |
 
 ---
 
@@ -142,7 +234,7 @@ Open `http://localhost:6800` in your browser to access the control panel:
 - ⚙️ **Stage Selector** — Start from any stage via dropdown
 - 📜 **Live Log Terminal** — Syntax-highlighted real-time log stream
 - 📱 **QR Remote Monitoring** — Scan QR code to monitor from your phone
-- 🆕 **Auto-Update** — Version badge + check for updates button + one-click update with progress bar
+- 🆕 **Auto-Update** — Version badge + check-for-updates button + one-click update with progress bar
 
 ### 🔄 Auto-Update
 
@@ -181,11 +273,14 @@ python packaging/build.py
 
 Produces `dist/FH6AutoBot.exe` — portable, no Python needed (Tesseract & ViGEmBus still required).
 
-> **💡 Tip:** Push a git tag (e.g. `git tag v1.2.0 && git push --tags`) to auto-trigger GitHub Actions build and publish to the Releases page.
+> **💡 Tip:** Push a git tag (e.g. `git tag v1.2.0 && git push --tags`) to auto-trigger the GitHub Actions build and publish to the Releases page.
 
 ---
 
 ## 📁 Project Structure
+
+<details>
+<summary>Click to expand the full source tree</summary>
 
 ```
 FH6_AutoBot/
@@ -239,26 +334,7 @@ FH6_AutoBot/
 └── pytest.ini                  # 🧪 Pytest config
 ```
 
----
-
-## 🧪 Testing & CI
-
-```bash
-# Run all tests
-python -m pytest
-
-# Lint check
-python -m ruff check .
-
-# Format check
-python -m ruff format --check .
-```
-
-| CI Job | Trigger | Description |
-|:-------|:--------|:------------|
-| **Lint** | Push / PR | Ruff lint + format validation |
-| **Test** | Push / PR | 170+ test cases (ubuntu-latest, hardware tests excluded) |
-| **Release** | `v*` tag | PyInstaller build → GitHub Release (auto-sync version) |
+</details>
 
 ---
 
@@ -311,6 +387,39 @@ python -m ruff format --check .
 
 ---
 
+## 🗺️ Roadmap
+
+> Indicative direction, not a promise — ideas and PRs welcome.
+
+- [ ] Resolution-agnostic skill-points ROI auto-detection (drop the 16:9 assumption)
+- [ ] A library of built-in EventLab blueprint presets with per-blueprint points-per-match
+- [ ] Richer dashboard analytics (points/hour, cars processed, session history)
+- [ ] Multi-monitor capture selection in the Web UI
+- [ ] Localization beyond en/zh
+
+---
+
+## 🧪 Testing & CI
+
+```bash
+# Run all tests
+python -m pytest
+
+# Lint check
+python -m ruff check .
+
+# Format check
+python -m ruff format --check .
+```
+
+| CI Job | Trigger | Description |
+|:-------|:--------|:------------|
+| **Lint** | Push / PR | Ruff lint + format validation |
+| **Test** | Push / PR | 170+ test cases (ubuntu-latest, hardware tests excluded) |
+| **Release** | `v*` tag | PyInstaller build → GitHub Release (auto-sync version) |
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow this workflow:
@@ -335,6 +444,12 @@ This project is for **learning and personal use** only.
 
 ---
 
-**If this project helps you, please give it a ⭐ Star!**
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=hypoxic127/FH6-AFK&type=Date)](https://star-history.com/#hypoxic127/FH6-AFK&Date)
+
+---
+
+**If this project helps you, please give it a ⭐ Star — it genuinely helps others discover it.**
 
 Made with ❤️ by [hypoxic127](https://github.com/hypoxic127)

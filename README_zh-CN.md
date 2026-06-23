@@ -1,29 +1,117 @@
-# 🏎️ FH6 AutoBot — 一个永不落幕的全自动挂机工具
+# 🏎️ FH6 AutoBot
 
 **🌐 语言: [English](README.md) | 中文**
 
+> **一个零人工干预、自主操控《极限竞速：地平线 6》的全自动机器人。**
+> 它通过 **计算机视觉**（OpenCV + Tesseract OCR + 颜色直方图）*感知* 游戏画面，通过
+> **虚拟 Xbox 360 手柄**（ViGEmBus）*执行* 操作，形成一条永不停歇、自我驱动的
+> **刷点 → 买车 → 加点 → 卖车** 闭环。配套 **实时 Web 仪表盘**，手机也能远程监控与操控。
+
 [![CI](https://github.com/hypoxic127/FH6-AFK/actions/workflows/ci.yml/badge.svg)](https://github.com/hypoxic127/FH6-AFK/actions/workflows/ci.yml)
 [![Release](https://github.com/hypoxic127/FH6-AFK/actions/workflows/release.yml/badge.svg)](https://github.com/hypoxic127/FH6-AFK/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/hypoxic127/FH6-AFK?color=success&logo=github)](https://github.com/hypoxic127/FH6-AFK/releases/latest)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4?logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/license-Personal%20Use-f5c542)
+[![Stars](https://img.shields.io/github/stars/hypoxic127/FH6-AFK?style=social)](https://github.com/hypoxic127/FH6-AFK/stargazers)
 
-> **Forza Horizon 6** 全自动技能点无限循环挂机系统。
-> 基于 **计算机视觉 (OpenCV + Tesseract OCR)** 识别游戏画面状态，通过 **虚拟手柄 (ViGEmBus)** 模拟操作，实现 **零人工干预** 的闭环技能点刷取。
-> 提供 **赛博朋克风格 Web UI** 仪表盘，支持远程监控与一键操控。
+**🎯 零人工干预 &nbsp;·&nbsp; 👁️ 计算机视觉感知 &nbsp;·&nbsp; 🤖 虚拟手柄执行 &nbsp;·&nbsp; 🛡️ 截图自愈 &nbsp;·&nbsp; 📦 一键打包 `.exe` &nbsp;·&nbsp; 🧪 170+ 测试**
+
+---
+
+## 🎬 演示
+
+<!--
+  录制一段 10-20 秒的屏幕画面，展示一次完整的循环：状态识别、机器人导航菜单、
+  以及实时日志刷新，导出为 docs/demo.gif，即可自动渲染于此。GIF 是 README 中转化率
+  最高的元素；请控制在 10 MB 以内，确保 GitHub 内联显示。
+-->
+<p align="center">
+  <img src="docs/demo.gif" alt="FH6 AutoBot — 全自动刷取循环实况" width="640">
+</p>
+
+<p align="center"><sub><em>机器人全程无人值守地刷技能点、买车、加点、卖车。</em></sub></p>
+
+---
+
+## 📸 仪表盘
+
+<!-- 在 http://localhost:6800 打开 Web UI（运行机器人，让日志流和计数器有数据），
+     截图保存为 docs/dashboard.png。 -->
+<p align="center">
+  <img src="docs/dashboard.png" alt="FH6 AutoBot — Web UI 仪表盘" width="820">
+</p>
+
+> 实时阶段追踪、循环与超级轮盘计数、带语法高亮的日志流，以及手机监控用的二维码 ——
+> 全部在本地 `http://localhost:6800` 提供服务。
+
+---
+
+## 🏛️ 工作原理
+
+FH6 AutoBot 是一条 感知 → 决策 → 执行 的闭环。每个循环周期，它都会捕获游戏窗口、
+判断当前所处的游戏状态、并下发手柄输入 —— 全程无需人工介入。
+
+```
+   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
+   │   感知 SEE    │ ─────▶ │  决策 DECIDE  │ ─────▶ │   执行 ACT    │
+   ├──────────────┤        ├──────────────┤        ├──────────────┤
+   │ MSS 截图      │        │ 状态机        │        │ 虚拟 Xbox 360 │
+   │ OpenCV + OCR  │        │ （四阶段）    │        │ 手柄          │
+   │ 颜色直方图    │        │ + 子状态机    │        │ (ViGEmBus)   │
+   └──────────────┘        └──────────────┘        └──────────────┘
+          ▲                                                │
+          └────────────────  游戏窗口  ◀────────────────────┘
+```
+
+整个代码库按 **四层架构 + 严格的单向依赖** 组织（`web → macro / farm → engine`，绝不反向），
+确保感知层永不依赖 UI：
+
+| 层级 | 职责 |
+|:-----|:-----|
+| **`engine/`** | 感知 + 基础设施 —— OCR、混合状态检测、屏幕捕获、手柄、日志、i18n、自动更新 |
+| **`macro/`** | 自动化逻辑 —— 主状态机 + 各阶段菜单宏（导航 / 购买 / 车库 / 升级） |
+| **`farm/`** | 自包含的视觉子状态机，自动驾驶 EventLab 比赛直至结算 |
+| **`web/`** | Flask + SocketIO 服务端与原生 JS 仪表盘 |
+
+一条线程安全的 **事件总线** 将机器人与 UI 彻底解耦：engine/macro 代码只负责 *发射* 事件
+（`log`、`state_change`、`bot_started` 等），从不导入 `web`；服务端订阅这些事件，并通过
+WebSocket 转发给浏览器。
+
+---
+
+## ⭐ 技术亮点
+
+让它不只是一个「按键录制器」的几个工程细节：
+
+- **12 路 OCR 投票** —— 每次读取技能点都会跑 3 种预处理 × 4 种 Tesseract PSM 模式，对出现
+  最多的最长位数结果投票，单个坏帧无法干扰结果。
+- **直方图 + OCR 混合状态检测** —— 先用颜色分布快速筛选候选状态，再用 OCR 精确确认，
+  在 10+ 个视觉相近的菜单间既省算力 *又* 稳健。
+- **截图自愈** —— 当 BitBlt/GDI 截图失败时，机器人会重置 MSS 实例并把游戏窗口拉回前台，
+  而不是默默地在黑帧上继续运行。
+- **协作式优先的安全停止** —— 在安全点检查共享停止标志，让机器人总在干净的边界停下
+  （释放手柄、绝不卡在按键中途）；异步异常注入仅在原生调用（如 Tesseract 子进程）阻塞时作为兜底。
+- **事务性自动更新** —— 整数元组版本比较、多镜像下载、失败即回滚的文件替换，以及重启前
+  过滤 `--update` 参数的防死循环守卫。
 
 ---
 
 ## 📋 目录
 
+- [🎬 演示](#-演示)
+- [📸 仪表盘](#-仪表盘)
+- [🏛️ 工作原理](#️-工作原理)
+- [⭐ 技术亮点](#-技术亮点)
 - [✨ 核心特性](#-核心特性)
 - [🔄 工作流程](#-工作流程)
 - [🛠️ 技术栈](#️-技术栈)
 - [🚀 快速开始](#-快速开始)
 - [📖 使用指南](#-使用指南)
 - [📁 项目结构](#-项目结构)
-- [🧪 测试与 CI](#-测试与-ci)
 - [🔍 核心技术原理](#-核心技术原理)
+- [🗺️ 路线图](#️-路线图)
+- [🧪 测试与 CI](#-测试与-ci)
 - [🤝 贡献指南](#-贡献指南)
 - [📝 许可证](#-许可证)
 
@@ -33,12 +121,12 @@
 
 | 特性 | 描述 |
 |:-----|:-----|
-| 🔁 **全自动四阶段循环** | 刷点 → 买车 → 加点 → 卖车，无限循环，睡觉挂机 |
+| 🔁 **全自动四阶段循环** | 刷点 → 买车 → 加点 → 卖车，无限循环 —— 睡觉时也在刷 |
 | 👁️ **计算机视觉状态机** | 颜色直方图 + OCR 混合检测，精准识别 10+ 种游戏界面状态 |
 | 🎮 **虚拟手柄控制** | ViGEmBus 模拟 Xbox 360 手柄，原生级输入兼容 |
-| 🖥️ **Web UI 仪表盘** | 毛玻璃风格界面 + 实时日志 + 手机扫码远程监控 |
-| ⏹️ **安全即时停止** | 协作式检查点让 Bot **立即且干净地**停止（释放手柄、重置截图）；仅当卡在原生调用时才用异步注入兜底 |
-| 🔄 **自动更新** | GitHub Releases 自动检测更新，Web UI 一键更新或 `--update` 命令行更新 |
+| 🖥️ **Web 仪表盘** | 毛玻璃风格界面 + 实时日志 + 手机扫码远程监控 |
+| ⏹️ **安全即时停止** | 协作式检查点让 Bot **立即且干净地**停止；仅在卡于原生调用时才用异步注入兜底 |
+| 🔄 **自动更新** | GitHub Releases 多镜像自动更新，Web UI 一键更新或 `--update` 命令行更新 |
 | 🛡️ **截图自愈** | BitBlt 失败自动恢复，MSS 实例重置 + 游戏窗口自动置前 |
 | ✅ **启动预检** | 运行前校验 Tesseract 是否可用——缺失时明确提示并退出，而非无限重试死循环 |
 | 🎰 **超级轮盘计数** | 自动统计已执行的加点宏次数 |
@@ -187,6 +275,9 @@ python packaging/build.py
 
 ## 📁 项目结构
 
+<details>
+<summary>点击展开完整源码目录树</summary>
+
 ```
 FH6_AutoBot/
 │
@@ -239,26 +330,7 @@ FH6_AutoBot/
 └── pytest.ini                  # 🧪 Pytest 测试配置
 ```
 
----
-
-## 🧪 测试与 CI
-
-```bash
-# 运行全部测试
-python -m pytest
-
-# 代码检查
-python -m ruff check .
-
-# 格式校验
-python -m ruff format --check .
-```
-
-| CI 任务 | 触发条件 | 描述 |
-|:--------|:---------|:-----|
-| **Lint** | Push / PR | Ruff 代码检查 + 格式校验 |
-| **Test** | Push / PR | 170+ 个测试用例（ubuntu-latest，已排除硬件测试） |
-| **Release** | `v*` tag | PyInstaller 构建 → GitHub Release 发布（自动同步版本号） |
+</details>
 
 ---
 
@@ -311,6 +383,39 @@ python -m ruff format --check .
 
 ---
 
+## 🗺️ 路线图
+
+> 仅为方向性规划，并非承诺 —— 欢迎提出想法与 PR。
+
+- [ ] 分辨率无关的技能点 ROI 自动检测（摆脱 16:9 假设）
+- [ ] 内置 EventLab 蓝图预设库，每个蓝图自带单局点数
+- [ ] 更丰富的仪表盘分析（点数/小时、已处理车辆数、会话历史）
+- [ ] Web UI 中的多显示器捕获选择
+- [ ] 中英之外的更多语言本地化
+
+---
+
+## 🧪 测试与 CI
+
+```bash
+# 运行全部测试
+python -m pytest
+
+# 代码检查
+python -m ruff check .
+
+# 格式校验
+python -m ruff format --check .
+```
+
+| CI 任务 | 触发条件 | 描述 |
+|:--------|:---------|:-----|
+| **Lint** | Push / PR | Ruff 代码检查 + 格式校验 |
+| **Test** | Push / PR | 170+ 个测试用例（ubuntu-latest，已排除硬件测试） |
+| **Release** | `v*` tag | PyInstaller 构建 → GitHub Release 发布（自动同步版本号） |
+
+---
+
 ## 🤝 贡献指南
 
 欢迎任何形式的贡献！请遵循以下流程：
@@ -335,6 +440,12 @@ python -m ruff format --check .
 
 ---
 
-**如果这个项目对你有帮助，请给一个 ⭐ Star 支持一下！**
+## ⭐ Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=hypoxic127/FH6-AFK&type=Date)](https://star-history.com/#hypoxic127/FH6-AFK&Date)
+
+---
+
+**如果这个项目对你有帮助，请给一个 ⭐ Star —— 这能实实在在地帮助更多人发现它。**
 
 Made with ❤️ by [hypoxic127](https://github.com/hypoxic127)

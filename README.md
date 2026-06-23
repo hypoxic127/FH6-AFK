@@ -54,17 +54,13 @@
 FH6 AutoBot is a closed perception → decision → actuation loop. Every tick, it captures the game
 window, decides what state the game is in, and issues controller input — no human in the loop.
 
-```
-   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
-   │  PERCEPTION  │ ─────▶ │   DECISION   │ ─────▶ │  ACTUATION   │
-   │  see         │        │  decide      │        │  act         │
-   ├──────────────┤        ├──────────────┤        ├──────────────┤
-   │ MSS capture  │        │ State machine│        │ Virtual Xbox │
-   │ OpenCV + OCR │        │ (4 stages)   │        │ 360 pad      │
-   │ histograms   │        │ + sub-FSMs   │        │ (ViGEmBus)   │
-   └──────────────┘        └──────────────┘        └──────────────┘
-          ▲                                                │
-          └────────────────  game window  ◀────────────────┘
+```mermaid
+flowchart LR
+    P["👁️ Perception (see)<br/>MSS capture<br/>OpenCV + OCR<br/>color histograms"]
+    D["🧠 Decision (decide)<br/>4-stage state machine<br/>+ visual sub-FSMs"]
+    A["🎮 Actuation (act)<br/>Virtual Xbox 360 pad<br/>(ViGEmBus)"]
+    P --> D --> A
+    A -.->|game window| P
 ```
 
 The codebase is organized as **four layers with a strict one-way dependency direction**
@@ -141,14 +137,10 @@ A few engineering details that make this more than a click-recorder:
 
 ## 🔄 Workflow
 
-```
-    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-    │  🏎️ Farm    │────▶│  🛒 Buy    │────▶│  ⚡ Upgrade  │────▶│  🗑️ Sell │
-    │ Skill Points│     │    Cars     │     │    Cars     │     │    Cars     │
-    └──────┬──────┘     └─────────────┘     └─────────────┘     └──────┬──────┘
-           │                                                           │
-           │                    ♻️ Infinite Loop                       │
-           └───────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["🏎️ Farm Skill Points"] --> B["🛒 Buy Cars"] --> C["⚡ Upgrade Cars"] --> D["🗑️ Sell Cars"]
+    D -->|"♻️ Infinite Loop"| A
 ```
 
 | Stage | State Constant | Description |

@@ -204,6 +204,7 @@ function t(key) {
 }
 
 function applyI18n() {
+    document.documentElement.lang = currentLang;
     document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.getAttribute("data-i18n");
         el.textContent = t(key);
@@ -221,7 +222,7 @@ function applyI18n() {
         badge.textContent = t("disconnected");
     }
     // Update log counter
-    document.getElementById("log-count").textContent = `${logCount} ${t("entries")}`;
+    updateLogCount();
     // Re-render current state display
     const stateEl = document.getElementById("current-state");
     if (stateEl._rawState) {
@@ -259,7 +260,6 @@ document.addEventListener("click", (e) => {
 // ==========================================
 const socket = io({ transports: ["websocket", "polling"] });
 
-let logCount = 0;
 let autoScroll = true;
 let botRunning = false;
 
@@ -274,6 +274,7 @@ socket.on("connect", () => {
 });
 
 socket.on("disconnect", () => {
+    if (isRebooting) return; // suppress during an update reboot (overlay is shown instead)
     const badge = document.getElementById("connection-status");
     badge.textContent = t("disconnected");
     badge.className = "badge badge-disconnected";
@@ -451,57 +452,134 @@ function updateButtons() {
 // ==========================================
 // 日志渲染
 // ==========================================
+// Incremental rendering: each incoming log appends a single node (batched in a
+// requestAnimationFrame), instead of rebuilding the whole list on every message.
+// A full renderLogs() runs only when the filter/search/buffer changes wholesale.
+let pendingLogs = [];
+let pendingDrops = 0;
+let logFlushScheduled = false;
+
+function logMatches(data) {
+    if (currentFilter !== "all" && (data.level || "info").toLowerCase() !== currentFilter) {
+        return false;
+    }
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const msg = (data.msg || "").toLowerCase();
+        const level = (data.level || "info").toLowerCase();
+        const time = data.timestamp ? formatTime(data.timestamp).toLowerCase() : "";
+        if (!msg.includes(query) && !level.includes(query) && !time.includes(query)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function buildLogNode(data) {
+    const entry = document.createElement("div");
+    entry.className = `log-entry log-${data.level || "info"}`;
+    const time = data.timestamp ? formatTime(data.timestamp) : "";
+    const level = (data.level || "info").toUpperCase();
+    const msg = escapeHtml(data.msg || "");
+    entry.innerHTML = `<span class="log-time">${time}</span><span class="log-level">[${level}]</span><span class="log-msg">${msg}</span>`;
+    return entry;
+}
+
+function updateLogCount() {
+    const container = document.getElementById("log-container");
+    const shown = container.querySelector(".log-empty") ? 0 : container.children.length;
+    document.getElementById("log-count").textContent = `${shown} / ${logBuffer.length} ${t("entries")}`;
+}
+
 function appendLog(data) {
     logBuffer.push(data);
+    let droppedMatched = false;
     if (logBuffer.length > 1000) {
-        logBuffer.shift();
+        droppedMatched = logMatches(logBuffer.shift());
     }
 
     triggerNotificationForLog(data);
-    renderLogs();
+
+    pendingLogs.push(data);
+    if (droppedMatched) pendingDrops++;
+
+    if (!logFlushScheduled) {
+        logFlushScheduled = true;
+        requestAnimationFrame(flushLogs);
+    }
 }
 
-function renderLogs() {
+// Flush queued logs in one batch: append matching new nodes via a DocumentFragment
+// and drop the oldest visible nodes that fell out of the buffer.
+function flushLogs() {
+    logFlushScheduled = false;
     const container = document.getElementById("log-container");
-    container.innerHTML = "";
 
-    const filtered = logBuffer.filter((data) => {
-        if (currentFilter !== "all" && (data.level || "info").toLowerCase() !== currentFilter) {
-            return false;
+    const frag = document.createDocumentFragment();
+    let appended = 0;
+    for (const data of pendingLogs) {
+        if (logMatches(data)) {
+            frag.appendChild(buildLogNode(data));
+            appended++;
         }
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            const msg = (data.msg || "").toLowerCase();
-            const level = (data.level || "info").toLowerCase();
-            const time = data.timestamp ? formatTime(data.timestamp).toLowerCase() : "";
-            if (!msg.includes(query) && !level.includes(query) && !time.includes(query)) {
-                return false;
-            }
-        }
-        return true;
-    });
+    }
+    pendingLogs = [];
 
-    if (filtered.length === 0) {
+    let drops = pendingDrops;
+    pendingDrops = 0;
+
+    if (appended === 0 && drops === 0) return;
+
+    if (appended > 0) {
+        const empty = container.querySelector(".log-empty");
+        if (empty) empty.remove();
+    }
+
+    while (drops-- > 0) {
+        const first = container.firstElementChild;
+        if (!first || first.classList.contains("log-empty")) break;
+        container.removeChild(first);
+    }
+
+    if (appended > 0) container.appendChild(frag);
+
+    // Safety: never keep more rendered nodes than the buffer cap.
+    while (container.children.length > 1000 && container.firstElementChild) {
+        container.removeChild(container.firstElementChild);
+    }
+
+    if (container.children.length === 0) {
         container.innerHTML = `<div class="log-empty">No matching entries</div>`;
-        document.getElementById("log-count").textContent = `0 / ${logBuffer.length} ${t("entries")}`;
-        return;
     }
 
-    filtered.forEach((data) => {
-        const entry = document.createElement("div");
-        entry.className = `log-entry log-${data.level || "info"}`;
-        const time = data.timestamp ? formatTime(data.timestamp) : "";
-        const level = (data.level || "info").toUpperCase();
-        const msg = escapeHtml(data.msg || "");
-        entry.innerHTML = `<span class="log-time">${time}</span><span class="log-level">[${level}]</span><span class="log-msg">${msg}</span>`;
-        container.appendChild(entry);
-    });
+    updateLogCount();
+    if (autoScroll) container.scrollTop = container.scrollHeight;
+}
 
-    document.getElementById("log-count").textContent = `${filtered.length} / ${logBuffer.length} ${t("entries")}`;
+// Full re-render — only on filter / search / clear, not per incoming log.
+function renderLogs() {
+    pendingLogs = [];
+    pendingDrops = 0;
+    const container = document.getElementById("log-container");
 
-    if (autoScroll) {
-        container.scrollTop = container.scrollHeight;
+    const frag = document.createDocumentFragment();
+    let shown = 0;
+    for (const data of logBuffer) {
+        if (logMatches(data)) {
+            frag.appendChild(buildLogNode(data));
+            shown++;
+        }
     }
+
+    container.innerHTML = "";
+    if (shown === 0) {
+        container.innerHTML = `<div class="log-empty">No matching entries</div>`;
+    } else {
+        container.appendChild(frag);
+    }
+
+    updateLogCount();
+    if (autoScroll) container.scrollTop = container.scrollHeight;
 }
 
 function filterLogs(level) {
@@ -848,7 +926,7 @@ socket.on("update_progress", (data) => {
 
 socket.on("update_status", (data) => {
     if (data.error) {
-        alert("❌ " + data.msg);
+        showToast("❌ " + data.msg);
         // Restore banner
         document.getElementById("update-progress").style.display = "none";
         document.getElementById("update-banner").style.display = "flex";
@@ -871,12 +949,6 @@ socket.on("rebooting", () => {
             })
             .catch(() => {});
     }, 3000);
-});
-
-// Override disconnect handler — don't show error if rebooting
-const origDisconnectHandler = socket.listeners("disconnect");
-socket.on("disconnect", () => {
-    if (isRebooting) return; // suppress disconnect error during reboot
 });
 
 function doUpdate() {
@@ -976,7 +1048,7 @@ function sendDesktopNotification(title, body) {
             new Notification(title, {
                 body: body,
                 tag: "fh6-autobot",
-                icon: "/static/favicon.ico"
+                icon: "/static/favicon.svg"
             });
         } catch (e) {
             console.error("Notification failed", e);
@@ -1194,12 +1266,6 @@ window.hideChartTooltip = function() {
         tooltip.style.display = "none";
     }
 };
-
-// Re-apply saved preferences once the DOM is ready.
-// (Toggle change handlers are already wired up above; restorePrefs is idempotent.)
-document.addEventListener("DOMContentLoaded", () => {
-    restorePrefs();
-});
 
 // ==========================================
 // ROI Calibration Tool

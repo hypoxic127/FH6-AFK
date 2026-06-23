@@ -26,17 +26,7 @@ jobs:
         run: |
           echo "ISSUE_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
           
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: false
 
-      - name: Set up Python 3.12
-        run: uv python install 3.12
-
-      - name: Install OpenHands CLI
-        run: |
-          uv tool install openhands --python 3.12
 
       - name: Comment on issue (Start)
         uses: actions/github-script@v7
@@ -63,9 +53,18 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          # We run openhands in headless mode targeting the current workspace
-          # The agent will edit files in-place
-          openhands --headless --override-with-envs --task "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
+          WORKSPACE_BASE=$(pwd)
+          # We run openhands in headless mode using the official Docker image
+          docker run -i \
+            --pull=always \
+            -e WORKSPACE_MOUNT_PATH=$WORKSPACE_BASE \
+            -e LLM_API_KEY="$LLM_API_KEY" \
+            -e LLM_MODEL="$LLM_MODEL" \
+            -e LLM_BASE_URL="$LLM_BASE_URL" \
+            -v $WORKSPACE_BASE:/opt/workspace_base \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            docker.all-hands.dev/all-hands-ai/openhands:0.32 \
+            python -m openhands.core.main -t "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
 
       - name: Check for changes and create Pull Request
         id: create_pr

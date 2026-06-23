@@ -1,0 +1,132 @@
+name: Resolve Issue with OpenHands CLI
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  resolve-issue:
+    # Trigger when the 'bug' label is added
+    if: github.event.label.name == 'bug'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history so the agent has full context
+          fetch-depth: 0
+
+      - name: Set up GitHub Environment
+        run: |
+          echo "ISSUE_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
+          
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install OpenHands CLI
+        run: |
+          # Install the modern openhands-ai package via uv
+          uv tool install openhands-ai --python 3.12
+
+      - name: Comment on issue (Start)
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: Number(process.env.ISSUE_NUMBER),
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🤖 OpenHands CLI is taking a look at this issue! \n\n[View the execution logs here](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+
+      - name: Run OpenHands Agent
+        id: openhands
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL || 'gemini-1.5-pro' }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          # Some litellm configurations prefer the explicit provider key
+          GEMINI_API_KEY: ${{ secrets.LLM_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          # We run openhands in headless mode targeting the current workspace
+          # The agent will edit files in-place
+          openhands --task "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
+
+      - name: Check for changes and create Pull Request
+        id: create_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if the agent modified any tracked files or added new ones
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Changes detected! Creating PR..."
+            
+            # Setup Git
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            
+            BRANCH_NAME="openhands-fix-issue-${{ github.event.issue.number }}"
+            git checkout -b "$BRANCH_NAME"
+            
+            git add .
+            git commit -m "fix: resolve issue #${{ github.event.issue.number }}"
+            
+            # Push changes to the new branch
+            git push -u origin "$BRANCH_NAME"
+            
+            # Create Pull Request using GitHub CLI
+            PR_URL=$(gh pr create \
+              --title "Fix issue #${{ github.event.issue.number }}" \
+              --body "This PR was generated automatically by OpenHands CLI to resolve issue #${{ github.event.issue.number }}." \
+              --base main \
+              --head "$BRANCH_NAME")
+            
+            echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+            echo "CREATED_PR=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes were made by the agent."
+            echo "CREATED_PR=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on issue (Result)
+        uses: actions/github-script@v7
+        if: always()
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CREATED_PR: ${{ steps.create_pr.outputs.CREATED_PR }}
+          PR_URL: ${{ env.PR_URL }}
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const createdPr = process.env.CREATED_PR === 'true';
+            
+            let message = '';
+            if (createdPr) {
+              message = `✅ OpenHands finished its work and created a Pull Request! \n👉 [Review the changes here](${process.env.PR_URL})`;
+            } else {
+              message = `❌ OpenHands finished its run, but didn't make any code changes. Check the Action logs for more details.`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

@@ -12,17 +12,7 @@ on:
         required: false
         type: string
         default: "@openhands-agent"
-    secrets:
-      LLM_MODEL:
-        required: true
-      LLM_API_KEY:
-        required: true
-      LLM_BASE_URL:
-        required: false
-      PAT_TOKEN:
-        required: true
-      PAT_USERNAME:
-        required: true
+
 
   issues:
     types: [labeled]

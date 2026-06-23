@@ -391,3 +391,15 @@ def perform_wheelspin(hwnd, gamepad, max_spins: int, sell_threshold: int = 250_0
 
     log_success(t("wheelspin.done", count=spin_count))
     return spin_count
+
+
+def run_auto_wheelspin(hwnd, gamepad) -> int:
+    """自动 Super Wheelspin 主流程。
+
+    Returns: 实际完成的抽奖次数（导航失败返回 0）。
+    """
+
+    config = load_bot_config()
+    sell_threshold = int(config.get("wheelspin_sell_threshold", 250000))
+    max_spins = int(config.get("wheelspin_count", 0))  # 0 = 全部
+    return perform_wheelspin(hwnd, gamepad, max_spins, sell_threshold)

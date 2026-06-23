@@ -36,8 +36,7 @@ jobs:
 
       - name: Install OpenHands CLI
         run: |
-          # Install the modern openhands-ai package via uv
-          uv tool install openhands-ai --python 3.12
+          uv tool install openhands --python 3.12
 
       - name: Comment on issue (Start)
         uses: actions/github-script@v7

@@ -65,13 +65,21 @@ jobs:
         run: |
           # We run openhands in headless mode targeting the current workspace
           # The agent will edit files in-place
-          openhands --headless --override-with-envs --task "Analyze the following issue carefully: '$ISSUE_TITLE'. Description: '$ISSUE_BODY'. FIRST, verify if the bug actually exists in the current codebase. If the issue describes a non-existent problem, a misunderstanding, or a feature that already works perfectly, DO NOT modify any files and finish the task. Only modify files if you genuinely find the root cause of the described issue." || echo "Agent exited with non-zero status but may have made partial progress"
+          openhands --headless --override-with-envs --task "Analyze the following issue carefully: '$ISSUE_TITLE'. Description: '$ISSUE_BODY'. FIRST, verify if the bug actually exists in the current codebase. If the issue describes a non-existent problem, a user environment issue (like missing drivers or wrong game settings), or a misunderstanding, DO NOT modify any code. Instead, write a polite and helpful explanation addressed to the user into a file named 'issue_response.txt' in the root directory and finish the task. Only modify files if you genuinely find a bug in the code." || echo "Agent exited with non-zero status but may have made partial progress"
 
       - name: Check for changes and create Pull Request
-        id: create_pr
+        id: process_result
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Preserve the agent's response file before git operations
+          if [ -f issue_response.txt ]; then
+            mv issue_response.txt /tmp/issue_response.txt
+            echo "HAS_RESPONSE=true" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_RESPONSE=false" >> $GITHUB_OUTPUT
+          fi
+
           # Check if the agent modified any tracked files or added new ones
           if [[ -n $(git status --porcelain) ]]; then
             echo "Changes detected! Creating PR..."
@@ -118,24 +126,35 @@ jobs:
         if: always()
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          CREATED_PR: ${{ steps.create_pr.outputs.CREATED_PR }}
+          CREATED_PR: ${{ steps.process_result.outputs.CREATED_PR }}
+          HAS_RESPONSE: ${{ steps.process_result.outputs.HAS_RESPONSE }}
           PR_URL: ${{ env.PR_URL }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const fs = require('fs');
             const issueNumber = Number(process.env.ISSUE_NUMBER);
             const createdPr = process.env.CREATED_PR === 'true';
+            const hasResponse = process.env.HAS_RESPONSE === 'true';
             
             let message = '';
-            if (createdPr) {
-              message = `✅ OpenHands finished its work and created a Pull Request! \n👉 [Review the changes here](${process.env.PR_URL})`;
-            } else {
-              message = `❌ OpenHands finished its run, but didn't make any code changes. Check the Action logs for more details.`;
+            
+            if (hasResponse && fs.existsSync('/tmp/issue_response.txt')) {
+              const agentResponse = fs.readFileSync('/tmp/issue_response.txt', 'utf8');
+              message += `💡 **OpenHands Agent 分析回复:**\n\n${agentResponse}\n\n---\n`;
             }
             
-            github.rest.issues.createComment({
-              issue_number: issueNumber,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            });
+            if (createdPr) {
+              message += `✅ OpenHands 修复了代码并创建了 Pull Request: [点击查看改动](${process.env.PR_URL})`;
+            } else if (!hasResponse) {
+              message += `❌ OpenHands 运行结束，没有发现需要修改的代码，也没有留下回复。请检查 Action 日志。`;
+            }
+            
+            if (message !== '') {
+              github.rest.issues.createComment({
+                issue_number: issueNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

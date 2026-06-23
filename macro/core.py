@@ -40,10 +40,11 @@ def get_cars_to_process():
     return target // POINTS_PER_CAR
 
 
-# 主状态机的四个状态常量（循环顺序：刷点 -> 买车 -> 加点 -> 卖车 -> 刷点...）
+# 主状态机的状态常量（循环顺序：刷点 -> 买车 -> 加点 -> 卖车 -> 抽奖 -> 刷点...）
 STATE_BUY_CARS = "STATE_BUY_CARS"  # 阶段 2：批量购买 Subaru Impreza
 STATE_UPGRADE_CARS = "STATE_UPGRADE_CARS"  # 阶段 3：逐辆消耗技能点升级技能树
 STATE_TRASH_CARS = "STATE_TRASH_CARS"  # 阶段 4：移除已升级的 Impreza、保留主力车
+STATE_WHEELSPIN = "STATE_WHEELSPIN"  # 阶段 5：自动领取 Super Wheelspin 抽奖
 STATE_FARM_POINTS = "STATE_FARM_POINTS"  # 阶段 1：自动跑 EventLab 刷到 999 技能点
 
 # MSS singleton - use shared instance from utils to avoid duplicate GDI handles

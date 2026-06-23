@@ -137,6 +137,39 @@ def archive_upgrade_to_file(car_name: str = "Impreza", wheelspins: int = 1) -> N
         log_error(t("farm.archive_fail", err=e))
 
 
+def archive_wheelspin_to_file(spin_number: int, target_count: int, duplicate_info: dict | None = None) -> None:
+    """将单次 Super Wheelspin 抽奖记录以 JSONL 格式追加到 data/play_archive.jsonl。
+
+    Args:
+        spin_number: 本次抽奖序号（从 1 开始）。
+        target_count: 本轮目标抽奖次数（0 表示全部）。
+        duplicate_info: 若本抽触发 "Car Already Owned"，传入
+            {"car_name": str|None, "sell_price": int|None, "action": "sell"|"keep"}。
+    """
+    archive_path = _get_archive_path()
+    record = {
+        "ts": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "type": "wheelspin",
+        "spin_number": spin_number,
+        "target_count": target_count,
+        "status": "success",
+    }
+    if duplicate_info:
+        record["duplicate_car"] = duplicate_info.get("car_name")
+        record["duplicate_price"] = duplicate_info.get("sell_price")
+        record["duplicate_action"] = duplicate_info.get("action")
+
+    try:
+        with open(archive_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        log_success(t("wheelspin.archived", n=spin_number))
+        from engine.event_bus import get_bus
+
+        get_bus().emit("match_archived", record)  # 触发事件广播以更新前端统计
+    except IOError as e:
+        log_error(t("farm.archive_fail", err=e))
+
+
 # ==========================================
 # 比赛状态持久化（断点续跑）
 # ==========================================

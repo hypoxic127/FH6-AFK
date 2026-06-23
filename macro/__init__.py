@@ -18,6 +18,7 @@ __all__ = [
     "STATE_BUY_CARS",
     "STATE_UPGRADE_CARS",
     "STATE_TRASH_CARS",
+    "STATE_WHEELSPIN",
     "STATE_FARM_POINTS",
     # navigation
     "navigate_menu_to_garage",
@@ -35,6 +36,8 @@ __all__ = [
     "reset_upgrade_position",
     # upgrade
     "action_upgrade_car_skills",
+    # wheelspin
+    "run_auto_wheelspin",
     # main loop
     "run_master_bot_loop",
 ]
@@ -46,6 +49,7 @@ from macro.core import (
     STATE_FARM_POINTS,
     STATE_TRASH_CARS,
     STATE_UPGRADE_CARS,
+    STATE_WHEELSPIN,
     _press_button,
     capture_raw_screenshot,
     capture_screenshot,
@@ -83,3 +87,4 @@ from macro.purchase import (
     navigate_to_impreza_purchase_screen,
 )
 from macro.upgrade import action_upgrade_car_skills
+from macro.wheelspin import run_auto_wheelspin  # noqa: F401

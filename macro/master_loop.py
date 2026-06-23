@@ -31,6 +31,7 @@ from macro.core import (
     STATE_FARM_POINTS,
     STATE_TRASH_CARS,
     STATE_UPGRADE_CARS,
+    STATE_WHEELSPIN,
     _press_button,
     capture_raw_screenshot,
     capture_screenshot,
@@ -58,6 +59,7 @@ from macro.purchase import (
     navigate_to_impreza_purchase_screen,
 )
 from macro.upgrade import action_upgrade_car_skills
+from macro.wheelspin import run_auto_wheelspin
 
 # 停止原语统一由 engine/control.py 提供（见上方 import），此处仅再导出以保持现有
 # `from macro.master_loop import BotStoppedError, clear_stop, request_stop, is_stop_requested` 可用。
@@ -235,23 +237,52 @@ def run_master_bot_loop(
                     log_state_header(STATE_TRASH_CARS, t("loop.trash_desc"))
                     removed_count = _scan_and_delete_cars(hwnd, gamepad)
                     log_success(t("loop.trash_done", count=removed_count))
-                    # B × 2 退出车库
+                    # B × 2 退出车库回到自由漫游（START 交给 WHEELSPIN 块按需打开菜单）
                     log_info(t("general.b_x", n=2))
                     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
                     _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
-                    # 等待回到自由漫游画面后再按菜单键
+                    # 等待回到自由漫游画面（确认锚点，但不在此按 START）
                     if _wait_for_anna_link(hwnd):
                         log_info(t("loop.menu_confirmed"))
                         time.sleep(2.0)  # 等待自由漫游画面完全就绪
+                    else:
+                        log_warning(t("loop.menu_fallback"))
+
+                    current_state = STATE_WHEELSPIN
+                    log_info(t("loop.transition", src="STATE_TRASH_CARS", dst="STATE_WHEELSPIN"))
+                    if not loop:
+                        log_success(t("loop.trash_single_done"))
+                        return
+                    time.sleep(1.0)
+
+                # --- 3.5 自动抽奖阶段 ---
+
+                elif current_state == STATE_WHEELSPIN:
+                    from engine.runtime import load_bot_config
+
+                    ws_config = load_bot_config()
+                    if not ws_config.get("auto_wheelspin", True):
+                        log_info(t("wheelspin.skip_disabled"))
+                    else:
+                        log_state_header(STATE_WHEELSPIN, t("loop.wheelspin_desc"))
+                        # 入口=自由漫游；run_auto_wheelspin 内部按 START 打开菜单并导航，
+                        # 结束后退回自由漫游。导航失败返回 0，不影响主循环推进。
+                        spin_count = run_auto_wheelspin(hwnd, gamepad)
+                        log_success(t("loop.wheelspin_done", count=spin_count))
+
+                    # 交还 FARM：确认自由漫游 → START 打开暂停菜单（FARM 期望的入口）
+                    if _wait_for_anna_link(hwnd):
+                        log_info(t("loop.menu_confirmed"))
+                        time.sleep(2.0)
                         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=2.0)
                     else:
                         log_warning(t("loop.menu_fallback"))
                         _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_START, delay=2.0)
 
                     current_state = STATE_FARM_POINTS
-                    log_info(t("loop.transition", src="STATE_TRASH_CARS", dst="STATE_FARM_POINTS"))
+                    log_info(t("loop.transition", src="STATE_WHEELSPIN", dst="STATE_FARM_POINTS"))
                     if not loop:
-                        log_success(t("loop.trash_single_done"))
+                        log_success(t("loop.wheelspin_single_done"))
                         return
                     time.sleep(1.0)
 

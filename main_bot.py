@@ -415,8 +415,9 @@ if __name__ == "__main__":
 
     if not check_vigembus():
         print(f"\n{_t('vigembus_missing', lang)}\n")
-        from engine.runtime import get_base_dir
         import os
+
+        from engine.runtime import get_base_dir
 
         installer_path = os.path.join(get_base_dir(), "tools", "drivers", "ViGEmBus_Setup.exe")
         if os.path.exists(installer_path):

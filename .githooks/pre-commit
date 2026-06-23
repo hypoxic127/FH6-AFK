@@ -15,6 +15,9 @@ fi
 
 echo "[pre-commit] Running ruff format on staged .py files..."
 
+# Fix import order and other auto-fixable linting issues
+echo "$STAGED_PY" | xargs python -m ruff check --fix
+
 # Format only the staged Python files
 echo "$STAGED_PY" | xargs python -m ruff format
 

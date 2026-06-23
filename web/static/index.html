@@ -189,6 +189,7 @@
                                 <option value="STATE_BUY_CARS">🛒 Buy Cars</option>
                                 <option value="STATE_UPGRADE_CARS">⚡ Upgrade Cars</option>
                                 <option value="STATE_TRASH_CARS">🗑️ Sell Cars</option>
+                                <option value="STATE_WHEELSPIN">🎰 Wheelspin</option>
                             </select>
                             <!-- Custom Dropdown -->
                             <div class="custom-select" id="custom-select">
@@ -203,6 +204,7 @@
                                     <div class="custom-select-option" data-value="STATE_BUY_CARS" data-i18n="optBuy">🛒 Buy Cars</div>
                                     <div class="custom-select-option" data-value="STATE_UPGRADE_CARS" data-i18n="optUpgrade">⚡ Upgrade Cars</div>
                                     <div class="custom-select-option" data-value="STATE_TRASH_CARS" data-i18n="optSell">🗑️ Sell Cars</div>
+                                    <div class="custom-select-option" data-value="STATE_WHEELSPIN" data-i18n="optWheelspin">🎰 Wheelspin</div>
                                 </div>
                             </div>
                         </div>
@@ -261,6 +263,27 @@
                             <button id="btn-calibrate-roi" class="btn" style="width: 100%; height: 38px; padding: 0;" onclick="startCalibration()">
                                 <span data-i18n="btnCalibrate">Calibrate</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Wheelspin Config -->
+                    <div class="control-row config-row">
+                        <div class="control-group">
+                            <label class="toggle-label">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="auto-wheelspin" checked>
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <span data-i18n="autoWheelspin">🎰 Auto Wheelspin</span>
+                            </label>
+                        </div>
+                        <div class="control-group config-input-group">
+                            <label data-i18n="wheelspinCount">🔢 Spins / Round (0=all)</label>
+                            <input type="number" id="wheelspin-count" class="config-input" min="0" max="999" value="0">
+                        </div>
+                        <div class="control-group config-input-group">
+                            <label data-i18n="wheelspinSellThreshold">💰 Sell Below (CR)</label>
+                            <input type="number" id="wheelspin-sell-threshold" class="config-input" min="0" max="20000000" step="1000" value="250000">
                         </div>
                     </div>
 
@@ -365,6 +388,6 @@
 
     <script src="/static/vendor/socket.io.min.js"></script>
     <script src="/static/vendor/qrcode.min.js"></script>
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=8"></script>
 </body>
 </html>

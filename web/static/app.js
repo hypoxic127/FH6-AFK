@@ -102,10 +102,14 @@ const I18N = {
         optBuy: "🛒 Buy Cars",
         optUpgrade: "⚡ Upgrade Cars",
         optSell: "🗑️ Sell Cars",
+        optWheelspin: "🎰 Wheelspin",
         autoLoop: "Auto Loop (4-stage cycle)",
         skipBuy: "Skip Buy Stage",
         pointsPerMatch: "\ud83d\udcca Points / Match",
         targetPoints: "\ud83c\udfaf Target Points",
+        autoWheelspin: "\ud83c\udfb0 Auto Wheelspin",
+        wheelspinCount: "\ud83d\udd22 Spins / Round (0=all)",
+        wheelspinSellThreshold: "\ud83d\udcb0 Sell Below (CR)",
         btnStart: "▶ Start Bot",
         btnStop: "⏹ Stop Bot",
         btnClear: "🗑 Clear Logs",
@@ -157,8 +161,12 @@ const I18N = {
         optBuy: "🛒 买车",
         optUpgrade: "⚡ 加技能点",
         optSell: "🗑️ 卖车",
+        optWheelspin: "🎰 抽奖",
         autoLoop: "自动循环（四阶段闭环）",
         skipBuy: "跳过买车阶段",
+        autoWheelspin: "🎰 自动抽奖",
+        wheelspinCount: "🔢 每轮抽数 (0=全部)",
+        wheelspinSellThreshold: "💰 低于则卖出 (CR)",
         pointsPerMatch: "\ud83d\udcca 单局点数",
         targetPoints: "\ud83c\udfaf 目标点数",
         btnStart: "▶ 启动",
@@ -317,13 +325,22 @@ socket.on("state_update", (data) => {
     }
 });
 
-// Bot Config (单局点数/目标点数)
+// Bot Config (单局点数/目标点数/抽奖)
 socket.on("bot_config", (data) => {
     if (data.points_per_match !== undefined) {
         document.getElementById("points-per-match").value = data.points_per_match;
     }
     if (data.target_points !== undefined) {
         document.getElementById("target-points").value = data.target_points;
+    }
+    if (data.auto_wheelspin !== undefined) {
+        document.getElementById("auto-wheelspin").checked = !!data.auto_wheelspin;
+    }
+    if (data.wheelspin_count !== undefined) {
+        document.getElementById("wheelspin-count").value = data.wheelspin_count;
+    }
+    if (data.wheelspin_sell_threshold !== undefined) {
+        document.getElementById("wheelspin-sell-threshold").value = data.wheelspin_sell_threshold;
     }
 });
 
@@ -854,11 +871,23 @@ function onConfigChange() {
     configSaveTimer = setTimeout(() => {
         const ppm = parseInt(document.getElementById("points-per-match").value) || 10;
         const tp = parseInt(document.getElementById("target-points").value) || 999;
-        socket.emit("save_bot_config", { points_per_match: ppm, target_points: tp });
+        const aw = document.getElementById("auto-wheelspin").checked;
+        const wc = parseInt(document.getElementById("wheelspin-count").value) || 0;
+        const wst = parseInt(document.getElementById("wheelspin-sell-threshold").value) || 0;
+        socket.emit("save_bot_config", {
+            points_per_match: ppm,
+            target_points: tp,
+            auto_wheelspin: aw,
+            wheelspin_count: wc,
+            wheelspin_sell_threshold: wst,
+        });
     }, 500);
 }
 document.getElementById("points-per-match").addEventListener("input", onConfigChange);
 document.getElementById("target-points").addEventListener("input", onConfigChange);
+document.getElementById("auto-wheelspin").addEventListener("change", onConfigChange);
+document.getElementById("wheelspin-count").addEventListener("input", onConfigChange);
+document.getElementById("wheelspin-sell-threshold").addEventListener("input", onConfigChange);
 
 // ==========================================
 // 初始化

@@ -63,6 +63,9 @@ _DEFAULT_BOT_CONFIG: dict[str, Any] = {
     "points_per_match": 10,
     "target_points": 999,
     "custom_roi": None,
+    "auto_wheelspin": True,  # 升级后是否自动进入 Super Wheelspin 抽奖
+    "wheelspin_count": 0,  # 每轮抽奖次数上限，0 = 全部抽完
+    "wheelspin_sell_threshold": 250000,  # 重复车售价阈值 (CR)，低于则卖出、高于则保留
 }
 
 
@@ -85,11 +88,14 @@ def load_bot_config() -> dict[str, Any]:
         merged = dict(_DEFAULT_BOT_CONFIG)
         for k, v in user_cfg.items():
             if k in merged:
-                if k in ["points_per_match", "target_points"]:
+                if k in ["points_per_match", "target_points", "wheelspin_count", "wheelspin_sell_threshold"]:
                     try:
                         merged[k] = int(v)
                     except (ValueError, TypeError):
                         pass
+                elif k == "auto_wheelspin":
+                    # 健壮布尔解析：bool("false") 为 True，故不能直接 bool(v)
+                    merged[k] = v if isinstance(v, bool) else str(v).strip().lower() in ("true", "1", "yes", "on")
                 else:
                     merged[k] = v
         return merged
@@ -136,6 +142,7 @@ def get_historical_stats() -> dict[str, Any]:
     total_matches = 0
     success_matches = 0
     total_wheelspins = 0
+    total_wheelspin_claimed = 0
     race_records = []
 
     if os.path.exists(archive_path):
@@ -150,6 +157,8 @@ def get_historical_stats() -> dict[str, Any]:
                         rec_type = record.get("type", "race")  # 默认视为比赛记录以兼容历史数据
                         if rec_type == "upgrade":
                             total_wheelspins += record.get("wheelspins", 1)
+                        elif rec_type == "wheelspin":
+                            total_wheelspin_claimed += 1  # 实际抽掉的次数（区别于 upgrade 赚到的）
                         else:  # race
                             total_matches += 1
                             status = record.get("status", "success")
@@ -224,5 +233,6 @@ def get_historical_stats() -> dict[str, Any]:
         "est_points": est_points,
         "avg_time_seconds": avg_time_seconds,
         "total_wheelspins": total_wheelspins,
+        "total_wheelspin_claimed": total_wheelspin_claimed,
         "recent_races": recent_races,
     }

@@ -22,6 +22,7 @@ from macro import (
     STATE_FARM_POINTS,
     STATE_TRASH_CARS,
     STATE_UPGRADE_CARS,
+    STATE_WHEELSPIN,
     run_master_bot_loop,
 )
 
@@ -116,13 +117,21 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "       Skip buying phase; use cars already in garage",
         "zh": "       跳过买车阶段，适用于车库已有未加点的车",
     },
+    "phase_6": {
+        "en": "  [6] 🎰  Wheelspin  (STATE_WHEELSPIN)",
+        "zh": "  [6] 🎰  抽奖  (STATE_WHEELSPIN)",
+    },
+    "phase_6_desc": {
+        "en": "       Navigate to MY HORIZON → Super Wheelspin → claim all spins",
+        "zh": "       导航至 MY HORIZON → Super Wheelspin → 抽完所有累积转盘",
+    },
     "phase_0": {
         "en": "  [0] 🔄  Auto Loop  (default: full cycle from Farm)",
         "zh": "  [0] 🔄  自动循环  (默认：从刷点开始完整循环)",
     },
     "phase_prompt": {
-        "en": "  Select phase [0-5] (default 0): ",
-        "zh": "  选择阶段 [0-5] (默认 0): ",
+        "en": "  Select phase [0-6] (default 0): ",
+        "zh": "  选择阶段 [0-6] (默认 0): ",
     },
     # Feedback
     "selected": {"en": "  ✅ Selected: ", "zh": "  ✅ 已选择: "},
@@ -184,6 +193,7 @@ _PHASE_NAMES: dict[str, dict[str | None, str]] = {
         STATE_BUY_CARS: "Buy Cars",
         STATE_UPGRADE_CARS: "Upgrade Cars",
         STATE_TRASH_CARS: "Trash Cars",
+        STATE_WHEELSPIN: "Wheelspin",
     },
     "zh": {
         None: "自动循环",
@@ -191,6 +201,7 @@ _PHASE_NAMES: dict[str, dict[str | None, str]] = {
         STATE_BUY_CARS: "买车",
         STATE_UPGRADE_CARS: "加技能点",
         STATE_TRASH_CARS: "卖车",
+        STATE_WHEELSPIN: "抽奖",
     },
 }
 
@@ -273,7 +284,7 @@ def show_start_menu(lang: str = "en"):
     print(_t("phase_title", lang))
     print("=" * 58)
     print()
-    for i in range(1, 6):
+    for i in range(1, 7):
         print(_t(f"phase_{i}", lang))
         print(_t(f"phase_{i}_desc", lang))
         print()
@@ -288,6 +299,7 @@ def show_start_menu(lang: str = "en"):
         "3": STATE_UPGRADE_CARS,
         "4": STATE_TRASH_CARS,
         "5": STATE_FARM_POINTS,
+        "6": STATE_WHEELSPIN,
     }
 
     while True:

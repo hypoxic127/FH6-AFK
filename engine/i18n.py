@@ -569,6 +569,120 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "✅ Trash phase completed (single run)",
         "zh": "✅ 卖车阶段完成（单次模式）",
     },
+    # Wheelspin phase (loop-level)
+    "loop.wheelspin_desc": {
+        "en": "Auto-claiming accumulated Super Wheelspins...",
+        "zh": "自动领取累积的超级抽奖...",
+    },
+    "loop.wheelspin_done": {
+        "en": "Wheelspin phase completed! Claimed {count} spins",
+        "zh": "抽奖阶段完成！共抽 {count} 次",
+    },
+    "loop.wheelspin_single_done": {
+        "en": "✅ Wheelspin phase completed (single run)",
+        "zh": "✅ 抽奖阶段完成（单次模式）",
+    },
+    # Wheelspin module
+    "wheelspin.skip_disabled": {
+        "en": "auto_wheelspin disabled, skipping wheelspin phase",
+        "zh": "auto_wheelspin 已关闭，跳过抽奖阶段",
+    },
+    "wheelspin.nav_start": {
+        "en": "Navigating to MY HORIZON → Super Wheelspin...",
+        "zh": "正在导航到 MY HORIZON → Super Wheelspin...",
+    },
+    "wheelspin.nav_horizon_ok": {
+        "en": "MY HORIZON tab confirmed (attempt {n})",
+        "zh": "已确认 MY HORIZON 标签（第 {n} 次）",
+    },
+    "wheelspin.nav_horizon_fail": {
+        "en": "Could not confirm MY HORIZON tab, proceeding by fixed offset",
+        "zh": "未能确认 MY HORIZON 标签，按固定偏移继续",
+    },
+    "wheelspin.nav_tile_ok": {
+        "en": "Super Wheelspin tile confirmed",
+        "zh": "已确认 Super Wheelspin 磁贴",
+    },
+    "wheelspin.nav_fail": {
+        "en": "Wheelspin navigation failed, skipping wheelspin phase",
+        "zh": "抽奖导航失败，跳过抽奖阶段",
+    },
+    "wheelspin.nav_ok": {
+        "en": "Arrived at Super Wheelspin screen",
+        "zh": "已到达 Super Wheelspin 界面",
+    },
+    "wheelspin.first_spin": {
+        "en": "First spin: animation auto-playing...",
+        "zh": "首轮：动画自动播放中...",
+    },
+    "wheelspin.skip_detected": {
+        "en": "Skip prompt detected, pressing A to skip animation",
+        "zh": "检测到 Skip 提示，按 A 跳过动画",
+    },
+    "wheelspin.skip_timeout": {
+        "en": "Skip prompt not detected (timeout), pressing A as fallback",
+        "zh": "未检测到 Skip 提示（超时），按 A 兜底",
+    },
+    "wheelspin.early_result": {
+        "en": "Result detected during animation: {result}",
+        "zh": "动画期间检测到结果: {result}",
+    },
+    "wheelspin.spin_n": {
+        "en": "Spin #{n}",
+        "zh": "第 {n} 抽",
+    },
+    "wheelspin.remaining": {
+        "en": "Spins remaining: {n}",
+        "zh": "剩余抽数: {n}",
+    },
+    "wheelspin.no_more": {
+        "en": "No more spins available (Spins Remaining = 0)",
+        "zh": "已无可抽次数（剩余 = 0）",
+    },
+    "wheelspin.no_result": {
+        "en": "No spin result detected (timeout) — exiting without counting",
+        "zh": "未检测到抽奖结果（超时）—— 不计数直接退出",
+    },
+    "wheelspin.limit_reached": {
+        "en": "Reached configured spin limit ({n})",
+        "zh": "已达配置的抽奖上限 ({n})",
+    },
+    "wheelspin.safety_stop": {
+        "en": "Safety cap reached (200 spins), forcing exit",
+        "zh": "触发安全上限 (200 次)，强制退出",
+    },
+    "wheelspin.waiting_result": {
+        "en": "Waiting for spin result...",
+        "zh": "等待抽奖结果...",
+    },
+    "wheelspin.dup_found": {
+        "en": "Car Already Owned: {car} (sells for {price})",
+        "zh": "重复车辆: {car} (售价 {price})",
+    },
+    "wheelspin.dup_sell": {
+        "en": "Selling {car} for {price} CR (< threshold {threshold})",
+        "zh": "卖出 {car}，{price} CR (低于阈值 {threshold})",
+    },
+    "wheelspin.dup_keep": {
+        "en": "Keeping {car} (price {price} >= threshold {threshold})",
+        "zh": "保留 {car} (售价 {price} >= 阈值 {threshold})",
+    },
+    "wheelspin.dup_ocr_fail": {
+        "en": "Duplicate-car OCR failed, defaulting to SELL",
+        "zh": "重复车 OCR 失败，默认卖出",
+    },
+    "wheelspin.exit": {
+        "en": "Exiting wheelspin, returning to free-roam...",
+        "zh": "退出抽奖，返回自由漫游...",
+    },
+    "wheelspin.done": {
+        "en": "Wheelspin complete: {count} spins claimed",
+        "zh": "抽奖完成：共抽 {count} 次",
+    },
+    "wheelspin.archived": {
+        "en": "Archived wheelspin #{n}",
+        "zh": "已归档抽奖 #{n}",
+    },
     # Farm phase
     "loop.farm_desc": {
         "en": "Skill points exhausted, starting auto-farm mode",

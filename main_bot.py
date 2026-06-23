@@ -1,3 +1,4 @@
+# This is a test comment by OpenHands
 # -*- coding: utf-8 -*-
 """
 FORZA HORIZON 6 AUTOBOT — Main Entry Point (main_bot.py)

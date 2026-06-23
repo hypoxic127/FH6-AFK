@@ -15,8 +15,6 @@
 ![License](https://img.shields.io/badge/license-Personal%20Use-f5c542)
 [![Stars](https://img.shields.io/github/stars/hypoxic127/FH6-AFK?style=social)](https://github.com/hypoxic127/FH6-AFK/stargazers)
 
-**🎯 零人工干预 &nbsp;·&nbsp; 👁️ 计算机视觉感知 &nbsp;·&nbsp; 🤖 虚拟手柄执行 &nbsp;·&nbsp; 🛡️ 截图自愈 &nbsp;·&nbsp; 📦 一键打包 `.exe` &nbsp;·&nbsp; 🧪 170+ 测试**
-
 ---
 
 ## 🎬 演示
@@ -92,6 +90,56 @@ WebSocket 转发给浏览器。
 - **事务性自动更新** —— 整数元组版本比较、多镜像下载、失败即回滚的文件替换，以及重启前
   过滤 `--update` 参数的防死循环守卫。
 
+<details>
+<summary>📖 <strong>完整技术细节</strong></summary>
+
+### 👁️ 视觉状态检测
+
+- **直方图 + OCR 混合** — `StateDetector` 先用颜色分布特征快速筛选候选状态，再用 OCR 精确验证
+- **PI 徽章颜色检测** — HSV 色彩空间分析：蓝色 = S2 主力车（保留），橙色 = 可删除车
+
+### 🔤 OCR 识别策略
+
+- **12 路投票** — 3 种预处理（Otsu / 自适应 / 固定阈值）× 4 种 PSM 模式（6/7/8/13）= 12 次识别，对出现最多的最长位数结果投票
+- **Otsu + 4 倍放大** — 二值化 + 白色留边 + 4 倍线性放大，最大化小字号数字的识别精度
+- **零技能点保底检测** — 无限制 OCR 识别 "No Skill Points Available" 画面
+- **启动预检** — 启动时校验 Tesseract 可用性，缺失即明确退出，绝不空转重试
+
+### 🎯 车库网格导航
+
+- **打字机遍历** — 逐列、从上到下扫描 3×N 网格
+- **三重校验** — OCR 关键词（2/3 一致）+ NEW 黄色标签 + LEGENDARY 橙色稀有度
+- **Cannot Afford 检测** — 弹窗自动关闭，停止购买流程
+
+### 📦 构建与打包
+
+- **PyInstaller --onefile** — 单文件 ~50MB 可执行程序
+- **运行时路径层** — `engine/runtime.py` 统一路径解析（开发/打包双模式）
+- **UTF-8 控制台修复** — `hook_utf8.py` 解决 Windows 中文日志乱码
+
+### 🔄 自动更新系统
+
+- **整数元组版本比较** — `(1,5,10) > (1,5,9)`，避免字符串比对漏洞
+- **事务性文件替换** — 失败时自动回滚（永不损坏用户安装）
+- **多镜像下载** — 直连 GitHub → ghproxy 代理链（3 个镜像）
+- **防无限重启** — 重启前过滤 `--update` 参数
+- **API 限流保护** — 1 小时检查缓存，不触发 GitHub 60 次/小时限制
+- **全局更新锁** — 防止 Web UI + CLI 并发下载
+
+### 🛡️ 截图自愈机制
+
+- **BitBlt 失败恢复** — GDI 设备上下文损坏时自动重置 MSS 实例
+- **窗口自动置前** — 截图失败后将游戏窗口拉回前台
+- **优雅停止** — 停止时释放手柄并重置 MSS；收尾期间的截图失败被静默处理（不再刷 `ERROR` 假错误日志）
+
+### ⏹️ 停止机制
+
+- **协作式优先** — 共享停止标志在安全点被检查（每次按键前、可中断等待、状态机每个 tick），Bot 总在干净的边界停止——绝不会卡在按键中途、留下按住不放的按钮
+- **注入式兜底** — 仅当 worker 阻塞在原生调用内（如 Tesseract 子进程）时才用异步异常注入；Web UI 立即响应，由后台任务完成宽限等待 + 兜底注入
+- **基于 `BaseException` 的信号** — 停止异常继承自 `BaseException`，宽泛的 `except Exception` 不会误吞停止请求
+
+</details>
+
 ---
 
 ## 📋 目录
@@ -106,7 +154,6 @@ WebSocket 转发给浏览器。
 - [🚀 快速开始](#-快速开始)
 - [📖 使用指南](#-使用指南)
 - [📁 项目结构](#-项目结构)
-- [🔍 核心技术原理](#-核心技术原理)
 - [🗺️ 路线图](#️-路线图)
 - [🧪 测试与 CI](#-测试与-ci)
 - [🤝 贡献指南](#-贡献指南)
@@ -218,26 +265,19 @@ python main_bot.py --web --port 8080  # 自定义端口
 
 启动后浏览器访问 `http://localhost:6800`，即可看到控制面板：
 
-- 🎯 **实时状态监控** — 当前阶段、循环次数、运行时长、超级轮盘数
-- 🔄 **流程进度条** — 可视化四阶段进度
+- 🎯 **实时状态与进度** — 当前阶段、循环次数、运行时长、超级轮盘数、四阶段进度条
 - ⚙️ **选择起始阶段** — 下拉选择从任意阶段开始
 - 📜 **实时日志终端** — 带语法高亮的日志流
 - 📱 **扫码远程监控** — 手机扫描 QR 码即可远程查看
-- 🆕 **自动更新** — 版本号徽章 + 检查更新按钮 + 一键下载更新（带进度条）
 
 ### 🔄 自动更新
 
-Bot 启动时会在后台自动检查新版本并提示：
+启动时检查 GitHub Releases；在 Web UI 顶栏一键更新，或用命令行：
 
 ```bash
-# 命令行手动更新
-FH6AutoBot.exe --update
-
-# 跳过更新检查（适用于开机自启等场景）
-FH6AutoBot.exe --skip-update --web
+FH6AutoBot.exe --update             # 立即更新
+FH6AutoBot.exe --skip-update --web  # 跳过检查（如开机自启）
 ```
-
-在 Web UI 中：点击右上角 🔄 按钮，或在新版本横幅出现时点击 **⬇️ 立即更新** 按钮。
 
 ### 💻 终端模式
 
@@ -327,55 +367,6 @@ FH6_AutoBot/
 
 ---
 
-## 🔍 核心技术原理
-
-### 👁️ 视觉状态检测
-
-- **直方图 + OCR 混合** — `StateDetector` 先用颜色分布特征快速筛选候选状态，再用 OCR 精确验证
-- **PI 徽章颜色检测** — HSV 色彩空间分析：蓝色 = S2 主力车（保留），橙色 = 可删除车
-
-### 🔤 OCR 识别策略
-
-- **12 路投票** — 3 种预处理（Otsu / 自适应 / 固定阈值）× 4 种 PSM 模式（6/7/8/13）= 12 次识别，对出现最多的最长位数结果投票
-- **Otsu + 4 倍放大** — 二值化 + 白色留边 + 4 倍线性放大，最大化小字号数字的识别精度
-- **零技能点保底检测** — 无限制 OCR 识别 "No Skill Points Available" 画面
-- **启动预检** — 启动时校验 Tesseract 可用性，缺失即明确退出，绝不空转重试
-
-### 🎯 车库网格导航
-
-- **打字机遍历** — 逐列、从上到下扫描 3×N 网格
-- **三重校验** — OCR 关键词（2/3 一致）+ NEW 黄色标签 + LEGENDARY 橙色稀有度
-- **Cannot Afford 检测** — 弹窗自动关闭，停止购买流程
-
-### 📦 构建与打包
-
-- **PyInstaller --onefile** — 单文件 ~50MB 可执行程序
-- **运行时路径层** — `engine/runtime.py` 统一路径解析（开发/打包双模式）
-- **UTF-8 控制台修复** — `hook_utf8.py` 解决 Windows 中文日志乱码
-
-### 🔄 自动更新系统
-
-- **整数元组版本比较** — `(1,5,10) > (1,5,9)`，避免字符串比对漏洞
-- **事务性文件替换** — 失败时自动回滚（永不损坏用户安装）
-- **多镜像下载** — 直连 GitHub → ghproxy 代理链（3 个镜像）
-- **防无限重启** — 重启前过滤 `--update` 参数
-- **API 限流保护** — 1 小时检查缓存，不触发 GitHub 60 次/小时限制
-- **全局更新锁** — 防止 Web UI + CLI 并发下载
-
-### 🛡️ 截图自愈机制
-
-- **BitBlt 失败恢复** — GDI 设备上下文损坏时自动重置 MSS 实例
-- **窗口自动置前** — 截图失败后将游戏窗口拉回前台
-- **优雅停止** — 停止时释放手柄并重置 MSS；收尾期间的截图失败被静默处理（不再刷 `ERROR` 假错误日志）
-
-### ⏹️ 停止机制
-
-- **协作式优先** — 共享停止标志在安全点被检查（每次按键前、可中断等待、状态机每个 tick），Bot 总在干净的边界停止——绝不会卡在按键中途、留下按住不放的按钮
-- **注入式兜底** — 仅当 worker 阻塞在原生调用内（如 Tesseract 子进程）时才用异步异常注入；Web UI 立即响应，由后台任务完成宽限等待 + 兜底注入
-- **基于 `BaseException` 的信号** — 停止异常继承自 `BaseException`，宽泛的 `except Exception` 不会误吞停止请求
-
----
-
 ## 🗺️ 路线图
 
 > 仅为方向性规划，并非承诺 —— 欢迎提出想法与 PR。
@@ -411,19 +402,11 @@ python -m ruff format --check .
 
 ## 🤝 贡献指南
 
-欢迎任何形式的贡献！请遵循以下流程：
+欢迎 PR —— fork → 建分支 (`git checkout -b feat/...`) → 提交 → 推送 → 发起 PR。
 
-1. **Fork** 本仓库
-2. 创建特性分支 (`git checkout -b feat/amazing-feature`)
-3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
-4. 推送到分支 (`git push origin feat/amazing-feature`)
-5. 创建 **Pull Request**
-
-### 开发规范
-
-- 🐍 代码风格：PEP 8（Ruff 强制检查）
-- 🏷️ 提交格式：[Conventional Commits](https://www.conventionalcommits.org/)（`feat` / `fix` / `docs` / `refactor` / `chore`）
-- ✅ 所有 PR 必须通过 CI 检查（Lint + Test）
+- 🐍 代码风格 **PEP 8**，由 Ruff 强制检查
+- 🏷️ 提交遵循 [Conventional Commits](https://www.conventionalcommits.org/)（`feat` / `fix` / `docs` / `refactor` / `chore`）
+- ✅ 所有 PR 必须通过 CI（Lint + Test）
 
 ---
 

@@ -16,8 +16,6 @@
 ![License](https://img.shields.io/badge/license-Personal%20Use-f5c542)
 [![Stars](https://img.shields.io/github/stars/hypoxic127/FH6-AFK?style=social)](https://github.com/hypoxic127/FH6-AFK/stargazers)
 
-**🎯 Zero human intervention &nbsp;·&nbsp; 👁️ CV-based perception &nbsp;·&nbsp; 🤖 Virtual-gamepad actuation &nbsp;·&nbsp; 🛡️ Self-healing capture &nbsp;·&nbsp; 📦 One-click `.exe` &nbsp;·&nbsp; 🧪 170+ tests**
-
 ---
 
 ## 🎬 Demo
@@ -95,6 +93,56 @@ A few engineering details that make this more than a click-recorder:
 - **Transactional auto-updater** — integer-tuple version comparison, multi-mirror download with a
   rollback-on-failure file swap, and a restart guard that filters `--update` from `argv`.
 
+<details>
+<summary>📖 <strong>Full technical breakdown</strong></summary>
+
+### 👁️ Visual State Detection
+
+- **Histogram + OCR Hybrid** — `StateDetector` uses color distribution features for fast candidate screening, then OCR for precise verification
+- **PI Badge Color Detection** — HSV color space analysis: blue = S2 main car (keep), orange = deletable
+
+### 🔤 OCR Strategy
+
+- **12-Pass Voting** — 3 preprocessing variants (Otsu / adaptive / fixed threshold) × 4 PSM modes (6/7/8/13) = 12 reads, votes on the most frequent longest-digit result
+- **Otsu + 4× Upscale** — Binarization, white padding, and 4× linear upscale maximize small-digit accuracy
+- **Zero Skill Points Fallback** — Unrestricted OCR detects the "No Skill Points Available" screen
+- **Startup Pre-Flight** — Tesseract availability is verified at launch; missing OCR exits cleanly instead of looping
+
+### 🎯 Garage Grid Navigation
+
+- **Typewriter Traversal** — Column by column, top to bottom (3×N grid)
+- **Triple Verification** — OCR keywords (2/3 match) + NEW yellow tag + LEGENDARY orange rarity
+- **Cannot Afford Detection** — Auto-dismisses popup, stops purchasing
+
+### 📦 Build & Packaging
+
+- **PyInstaller --onefile** — Single ~50MB executable
+- **Runtime Path Layer** — `engine/runtime.py` unified path resolution (dev/packaged dual-mode)
+- **UTF-8 Console Fix** — `hook_utf8.py` resolves Chinese log garbling on Windows
+
+### 🔄 Auto-Update System
+
+- **Integer Tuple Version Comparison** — `(1,5,10) > (1,5,9)`, no string comparison bugs
+- **Transactional File Replacement** — Rollback on failure (never bricks the installation)
+- **Multi-Mirror Download** — Direct GitHub → ghproxy fallback chain (3 mirrors)
+- **Infinite Restart Prevention** — Filters `--update` from `sys.argv` before restarting
+- **Rate Limit Protection** — 1-hour API cache, respects GitHub's 60 req/hr limit
+- **Global Update Lock** — Prevents concurrent downloads from Web UI + CLI
+
+### 🛡️ Self-Healing Screenshot
+
+- **BitBlt Failure Recovery** — Auto-resets MSS instance when GDI device context is corrupted
+- **Window Re-Foreground** — Pulls game window back to front after capture failure
+- **Graceful Stop** — Stopping releases the gamepad and resets MSS; capture errors during teardown are silenced (no false `ERROR` log spam)
+
+### ⏹️ Stop Mechanism
+
+- **Cooperative-First** — A shared stop flag is checked at safe points (before every button press, interruptible waits, each state-machine tick), so the bot stops at a clean boundary — never mid-keypress with a button left held
+- **Injection Fallback** — Async exception injection is used only when the worker is blocked inside a native call (e.g. Tesseract subprocess); the Web UI replies instantly and a background task handles the grace-join + fallback
+- **`BaseException`-based Signal** — The stop exception subclasses `BaseException`, so broad `except Exception` handlers can't accidentally swallow a stop request
+
+</details>
+
 ---
 
 ## 📋 Table of Contents
@@ -109,7 +157,6 @@ A few engineering details that make this more than a click-recorder:
 - [🚀 Getting Started](#-getting-started)
 - [📖 Usage](#-usage)
 - [📁 Project Structure](#-project-structure)
-- [🔍 Technical Details](#-technical-details)
 - [🗺️ Roadmap](#️-roadmap)
 - [🧪 Testing & CI](#-testing--ci)
 - [🤝 Contributing](#-contributing)
@@ -221,26 +268,19 @@ python main_bot.py --web --port 8080  # Custom port
 
 Open `http://localhost:6800` in your browser to access the control panel:
 
-- 🎯 **Live Status** — Current stage, loop count, runtime, super wheelspin count
-- 🔄 **Progress Bar** — Visual 4-stage progress indicator
-- ⚙️ **Stage Selector** — Start from any stage via dropdown
-- 📜 **Live Log Terminal** — Syntax-highlighted real-time log stream
-- 📱 **QR Remote Monitoring** — Scan QR code to monitor from your phone
-- 🆕 **Auto-Update** — Version badge + check-for-updates button + one-click update with progress bar
+- 🎯 **Live status & progress** — Current stage, loop count, runtime, super-wheelspin count, 4-stage progress bar
+- ⚙️ **Stage selector** — Start from any stage via dropdown
+- 📜 **Live log terminal** — Syntax-highlighted real-time log stream
+- 📱 **Remote monitoring** — Scan the QR code to watch from your phone
 
 ### 🔄 Auto-Update
 
-The bot automatically checks for new releases on startup and notifies you:
+Checks GitHub Releases on startup; update in one click from the Web UI header, or via CLI:
 
 ```bash
-# Manual update via CLI
-FH6AutoBot.exe --update
-
-# Skip update check (e.g. for autostart scenarios)
-FH6AutoBot.exe --skip-update --web
+FH6AutoBot.exe --update             # update now
+FH6AutoBot.exe --skip-update --web  # skip the check (e.g. autostart)
 ```
-
-In Web UI: click the 🔄 button in the header, or use the **⬇️ Update Now** button when a new version banner appears.
 
 ### 💻 Terminal Mode
 
@@ -330,55 +370,6 @@ FH6_AutoBot/
 
 ---
 
-## 🔍 Technical Details
-
-### 👁️ Visual State Detection
-
-- **Histogram + OCR Hybrid** — `StateDetector` uses color distribution features for fast candidate screening, then OCR for precise verification
-- **PI Badge Color Detection** — HSV color space analysis: blue = S2 main car (keep), orange = deletable
-
-### 🔤 OCR Strategy
-
-- **12-Pass Voting** — 3 preprocessing variants (Otsu / adaptive / fixed threshold) × 4 PSM modes (6/7/8/13) = 12 reads, votes on the most frequent longest-digit result
-- **Otsu + 4× Upscale** — Binarization, white padding, and 4× linear upscale maximize small-digit accuracy
-- **Zero Skill Points Fallback** — Unrestricted OCR detects the "No Skill Points Available" screen
-- **Startup Pre-Flight** — Tesseract availability is verified at launch; missing OCR exits cleanly instead of looping
-
-### 🎯 Garage Grid Navigation
-
-- **Typewriter Traversal** — Column by column, top to bottom (3×N grid)
-- **Triple Verification** — OCR keywords (2/3 match) + NEW yellow tag + LEGENDARY orange rarity
-- **Cannot Afford Detection** — Auto-dismisses popup, stops purchasing
-
-### 📦 Build & Packaging
-
-- **PyInstaller --onefile** — Single ~50MB executable
-- **Runtime Path Layer** — `engine/runtime.py` unified path resolution (dev/packaged dual-mode)
-- **UTF-8 Console Fix** — `hook_utf8.py` resolves Chinese log garbling on Windows
-
-### 🔄 Auto-Update System
-
-- **Integer Tuple Version Comparison** — `(1,5,10) > (1,5,9)`, no string comparison bugs
-- **Transactional File Replacement** — Rollback on failure (never bricks the installation)
-- **Multi-Mirror Download** — Direct GitHub → ghproxy fallback chain (3 mirrors)
-- **Infinite Restart Prevention** — Filters `--update` from `sys.argv` before restarting
-- **Rate Limit Protection** — 1-hour API cache, respects GitHub's 60 req/hr limit
-- **Global Update Lock** — Prevents concurrent downloads from Web UI + CLI
-
-### 🛡️ Self-Healing Screenshot
-
-- **BitBlt Failure Recovery** — Auto-resets MSS instance when GDI device context is corrupted
-- **Window Re-Foreground** — Pulls game window back to front after capture failure
-- **Graceful Stop** — Stopping releases the gamepad and resets MSS; capture errors during teardown are silenced (no false `ERROR` log spam)
-
-### ⏹️ Stop Mechanism
-
-- **Cooperative-First** — A shared stop flag is checked at safe points (before every button press, interruptible waits, each state-machine tick), so the bot stops at a clean boundary — never mid-keypress with a button left held
-- **Injection Fallback** — Async exception injection is used only when the worker is blocked inside a native call (e.g. Tesseract subprocess); the Web UI replies instantly and a background task handles the grace-join + fallback
-- **`BaseException`-based Signal** — The stop exception subclasses `BaseException`, so broad `except Exception` handlers can't accidentally swallow a stop request
-
----
-
 ## 🗺️ Roadmap
 
 > Indicative direction, not a promise — ideas and PRs welcome.
@@ -414,19 +405,11 @@ python -m ruff format --check .
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow this workflow:
+PRs welcome — fork → branch (`git checkout -b feat/...`) → commit → push → open a PR.
 
-1. **Fork** this repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a **Pull Request**
-
-### Development Standards
-
-- 🐍 Code style: PEP 8 (enforced by Ruff)
-- 🏷️ Commit format: [Conventional Commits](https://www.conventionalcommits.org/) (`feat` / `fix` / `docs` / `refactor` / `chore`)
-- ✅ All PRs must pass CI checks (Lint + Test)
+- 🐍 Code style **PEP 8**, enforced by Ruff
+- 🏷️ Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat` / `fix` / `docs` / `refactor` / `chore`)
+- ✅ All PRs must pass CI (Lint + Test)
 
 ---
 

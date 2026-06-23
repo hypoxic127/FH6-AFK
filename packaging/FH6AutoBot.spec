@@ -33,20 +33,27 @@ except NameError:
 _vgamepad_spec = importlib.util.find_spec("vgamepad")
 _vgamepad_dir = os.path.dirname(_vgamepad_spec.origin)
 
+_custom_datas = [
+    # vgamepad 的 ViGEmClient.dll 通过 ctypes 加载，PyInstaller 无法自动检测
+    # 必须保持原始目录结构: vgamepad/win/vigem/client/x64/ViGEmClient.dll
+    (os.path.join(
+        _vgamepad_dir,
+        "win", "vigem", "client"
+    ), os.path.join("vgamepad", "win", "vigem", "client")),
+    # Web UI 静态文件
+    (os.path.join(PROJECT_ROOT, "web", "static"), os.path.join("web", "static")),
+]
+
+for opt_dir in ["tesseract", "drivers"]:
+    opt_path = os.path.join(PROJECT_ROOT, "tools", opt_dir)
+    if os.path.exists(opt_path):
+        _custom_datas.append((opt_path, os.path.join("tools", opt_dir)))
+
 a = Analysis(
     [os.path.join(PROJECT_ROOT, "main_bot.py")],
     pathex=[PROJECT_ROOT],
     binaries=[],
-    datas=[
-        # vgamepad 的 ViGEmClient.dll 通过 ctypes 加载，PyInstaller 无法自动检测
-        # 必须保持原始目录结构: vgamepad/win/vigem/client/x64/ViGEmClient.dll
-        (os.path.join(
-            _vgamepad_dir,
-            "win", "vigem", "client"
-        ), os.path.join("vgamepad", "win", "vigem", "client")),
-        # Web UI 静态文件
-        (os.path.join(PROJECT_ROOT, "web", "static"), os.path.join("web", "static")),
-    ],
+    datas=_custom_datas,
     hiddenimports=[
         "engine",
         "engine.ocr",
@@ -120,12 +127,6 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-
-# 动态添加可选依赖目录（避免在 GitHub Actions 等无该目录的环境下打包报错）
-for opt_dir in ["tesseract", "drivers"]:
-    opt_path = os.path.join(PROJECT_ROOT, "tools", opt_dir)
-    if os.path.exists(opt_path):
-        a.datas.append((opt_path, os.path.join("tools", opt_dir)))
 
 # === 后处理: 移除不需要的大文件 ===
 # 从 binaries 列表中排除 OpenCV ffmpeg DLL 和 OpenBLAS（共节省 ~47 MB）

@@ -23,10 +23,54 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.request
+
+
+def download_vigembus(tools_dir: str) -> None:
+    driver_dir = os.path.join(tools_dir, "drivers")
+    os.makedirs(driver_dir, exist_ok=True)
+    installer_path = os.path.join(driver_dir, "ViGEmBus_Setup.exe")
+    if not os.path.exists(installer_path):
+        print("  📥 正在下载 ViGEmBus 安装包...")
+        url = "https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe"
+        try:
+            urllib.request.urlretrieve(url, installer_path)
+            print("  ✅ ViGEmBus 安装包下载完成")
+        except Exception as e:
+            print(f"  ❌ ViGEmBus 下载失败: {e}")
+            print("  ⚠️ 请手动下载并放在 tools/drivers/ViGEmBus_Setup.exe 后重新打包")
+            sys.exit(1)
+    else:
+        print("  ✅ ViGEmBus 安装包已存在")
+
+
+def prepare_tesseract(tools_dir: str) -> None:
+    tess_dir = os.path.join(tools_dir, "tesseract")
+    if os.path.exists(os.path.join(tess_dir, "tesseract.exe")):
+        print("  ✅ Tesseract OCR 引擎已存在")
+        return
+
+    print("  🔍 正在寻找系统中已安装的 Tesseract OCR...")
+    sys_tess = r"C:\Program Files\Tesseract-OCR"
+    if os.path.exists(os.path.join(sys_tess, "tesseract.exe")):
+        print("  📥 正在复制系统 Tesseract 到打包目录...")
+        shutil.copytree(sys_tess, tess_dir, dirs_exist_ok=True)
+        print("  ✅ Tesseract OCR 复制完成")
+    else:
+        print("  ❌ 未找到 Tesseract OCR！")
+        print("  ⚠️ 无法自动下载免安装版，请先手动将 Tesseract 文件夹放入 tools/tesseract/")
+        print("  建议路径: tools/tesseract/tesseract.exe")
+        sys.exit(1)
 
 
 def main() -> int:
     """执行 PyInstaller 打包流程。"""
+    # Force UTF-8 stdout/stderr to prevent cp1252 crash on emoji/Chinese
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     packaging_dir: str = os.path.dirname(os.path.abspath(__file__))
     project_root: str = os.path.dirname(packaging_dir)
     spec_file: str = os.path.join(packaging_dir, "FH6AutoBot.spec")
@@ -36,6 +80,12 @@ def main() -> int:
     print("=" * 50)
     print("  FH6 AutoBot — 打包构建")
     print("=" * 50)
+    print()
+
+    # 准备内置依赖 (Tesseract & ViGEmBus)
+    tools_dir = os.path.join(project_root, "tools")
+    prepare_tesseract(tools_dir)
+    download_vigembus(tools_dir)
     print()
 
     # 检查 PyInstaller
@@ -79,8 +129,8 @@ def main() -> int:
         print(f"  📏 文件大小: {size_mb:.1f} MB")
         print()
         print("  使用方法:")
-        print("    1. 确保目标电脑已安装 Tesseract OCR 和 ViGEmBus")
-        print("    2. 双击 FH6AutoBot.exe 即可运行")
+        print("    1. 双击 FH6AutoBot.exe 即可运行")
+        print("    2. 若未安装手柄驱动，将自动弹窗安装")
         print("=" * 50)
     else:
         print(f"  ⚠️ 未找到输出文件: {exe_path}")

@@ -18,6 +18,7 @@ python main_bot.py --web             # run web UI (default http://localhost:6800
 python main_bot.py --web --port 8080 # custom port
 python main_bot.py                    # terminal mode (interactive lang/mode/phase menu)
 python main_bot.py --lang zh --skip-update --web   # non-interactive flags
+python main_bot.py --debug --web                   # enable OCR debug-image dumps (see below)
 
 python -m pytest                              # run tests (hardware tests auto-excluded, see below)
 python -m pytest tests/test_ocr.py            # single file
@@ -37,6 +38,14 @@ python packaging/build.py              # build single-file dist/FH6AutoBot.exe (
   and re-stages them, so commits are always formatted. Commit style: Conventional Commits.
 - When searching, ignore `dist/` and `build/` — they bundle full copies of site-packages (cv2,
   numpy, …) and a stale copy of the source that pollute grep/glob results.
+- `--debug` flips on `engine.ocr.DEBUG_WRITE_FILES`, which dumps annotated OCR crops for
+  diagnosing misreads. **Read this flag live as `module_ocr.DEBUG_WRITE_FILES`** (import the
+  module, e.g. `from engine import ocr as module_ocr`) — `from engine.ocr import DEBUG_WRITE_FILES`
+  binds a copy at import time (frozen `False`) and silently ignores `--debug` (the bug fixed in
+  `a66902a`).
+- `tools/` holds standalone, **un-packaged** dev scripts — ROI calibration, state calibration, and
+  OCR capture/debug (e.g. `tools/capture_ocr_debug.py`, `tools/tool_calibrate_states.py`) — used to
+  build/verify the `custom_roi` skill-points region. Not shipped in the `.exe`.
 
 ## Architecture
 
@@ -45,8 +54,8 @@ reverse):
 
 - **`engine/`** — perception + infrastructure. `ocr.py` (skill-points + car-name OCR, multi-PSM
   voting), `state_detect.py` (histogram + OCR hybrid game-state detection), `utils.py` (logging,
-  Win32 window ops, gamepad `press_button`, MSS screenshot singleton), `event_bus.py`, `i18n.py`,
-  `runtime.py`, `updater.py`, `version.py`.
+  Win32 window ops, gamepad `press_button`, MSS screenshot singleton), `control.py` (cooperative-stop
+  primitives — see below), `event_bus.py`, `i18n.py`, `runtime.py`, `updater.py`, `version.py`.
 - **`macro/`** — the automation. `master_loop.py` holds `run_master_bot_loop`, the master state
   machine. `core.py` has shared infra + the four `STATE_*` constants + screenshot helpers.
   `navigation.py` / `purchase.py` / `garage.py` / `upgrade.py` implement per-stage menu macros.
@@ -74,9 +83,14 @@ imports `web`. `web/server.py::_bridge_events()` subscribes and forwards them to
 ### Web threading model (a real source of past bugs)
 
 - SocketIO runs in `async_mode="threading"` on the Werkzeug dev server. The bot runs in a daemon
-  worker thread (`_run_bot`); **instant stop** injects `BotStoppedError` into that thread via
-  `ctypes.pythonapi.PyThreadState_SetAsyncExc` (`_kill_thread`). The loop also checks a cooperative
-  `_stop_event` at `_check_stop()` checkpoints.
+  worker thread (`_run_bot`). The stop primitives live in **`engine/control.py`** (kept in the lowest
+  layer so `press_button` can check them without breaking the dependency direction): `request_stop()`
+  sets a global `_stop_event`, and cooperative checkpoints (`check_stop()` / `interruptible_sleep()`,
+  plus the loop's `_check_stop()`) bail out at safe boundaries. **Instant stop** is the fallback for
+  when the worker is blocked in a native call: it injects `BotStoppedError` via
+  `ctypes.pythonapi.PyThreadState_SetAsyncExc` (`_kill_thread`). `BotStoppedError` subclasses
+  `BaseException` (not `Exception`) so the many broad `except Exception:` handlers on the hot path
+  can't accidentally swallow a stop request.
 - **Long-running SocketIO event handlers must offload to `_socketio.start_background_task(...)` and
   emit results to `request.sid`** — blocking the dispatch thread (e.g. with `force_foreground` +
   sleeps) starves the connection.

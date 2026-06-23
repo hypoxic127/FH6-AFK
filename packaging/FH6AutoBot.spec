@@ -46,6 +46,10 @@ a = Analysis(
         ), os.path.join("vgamepad", "win", "vigem", "client")),
         # Web UI 静态文件
         (os.path.join(PROJECT_ROOT, "web", "static"), os.path.join("web", "static")),
+        # Tesseract OCR 引擎
+        (os.path.join(PROJECT_ROOT, "tools", "tesseract"), os.path.join("tools", "tesseract")),
+        # ViGEmBus 驱动安装包
+        (os.path.join(PROJECT_ROOT, "tools", "drivers"), os.path.join("tools", "drivers")),
     ],
     hiddenimports=[
         "engine",

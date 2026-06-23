@@ -162,6 +162,18 @@ _STRINGS: dict[str, dict[str, str]] = {
             "     （默认安装路径会被自动检测，无需手动加入 PATH。）"
         ),
     },
+    "vigembus_missing": {
+        "en": (
+            "  ❌ ViGEmBus driver not detected!\n"
+            "     The bot needs it to simulate Xbox controller inputs.\n"
+            "     Launching the installer now. Please complete the installation and restart the bot."
+        ),
+        "zh": (
+            "  ❌ 未检测到 ViGEmBus 手柄驱动！\n"
+            "     程序需要它来模拟 Xbox 手柄按键操作。\n"
+            "     即将自动启动安装程序，请在安装完成后重新运行本程序。"
+        ),
+    },
 }
 
 # Phase display names
@@ -388,6 +400,32 @@ if __name__ == "__main__":
 
     if not setup_tesseract():
         print(f"\n{_t('tesseract_missing', lang)}\n")
+        sys.exit(1)
+
+    # Pre-flight: Check ViGEmBus driver
+    def check_vigembus() -> bool:
+        try:
+            import vgamepad
+
+            # Try to initialize the gamepad to see if the driver is installed
+            vgamepad.VX360Gamepad()
+            return True
+        except Exception:
+            return False
+
+    if not check_vigembus():
+        print(f"\n{_t('vigembus_missing', lang)}\n")
+        from engine.runtime import get_base_dir
+        import os
+
+        installer_path = os.path.join(get_base_dir(), "tools", "drivers", "ViGEmBus_Setup.exe")
+        if os.path.exists(installer_path):
+            try:
+                os.startfile(installer_path)
+            except Exception as e:
+                print(f"  [ERROR] Failed to launch installer: {e}")
+        else:
+            print("  [ERROR] Bundled installer not found. Please install ViGEmBus manually from GitHub.")
         sys.exit(1)
 
     # Step 2: Mode selection (CLI flags take priority)

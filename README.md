@@ -181,9 +181,7 @@ python packaging/build.py   # → dist/FH6AutoBot.exe (Tesseract & ViGEmBus stil
 
 > Indicative direction, not a promise — ideas and PRs welcome.
 
-- [ ] **Configurable target car** — farm any model, not just the hardcoded Impreza 22B-STI
 - [ ] **Resolution-agnostic OCR** — auto-detect the skill-points ROI, dropping the 16:9 assumption
-- [ ] **Blueprint presets** — built-in EventLab blueprints, each with its own points-per-match
 - [ ] **Dashboard analytics** — points/hour, cars processed, session history
 - [ ] **Multi-monitor** — pick the capture display in the Web UI
 - [ ] **More languages** — localization beyond en/zh

@@ -65,7 +65,7 @@ jobs:
         run: |
           # We run openhands in headless mode targeting the current workspace
           # The agent will edit files in-place
-          openhands --task "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
+          openhands --headless --override-with-envs --task "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
 
       - name: Check for changes and create Pull Request
         id: create_pr

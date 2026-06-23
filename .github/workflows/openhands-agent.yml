@@ -65,7 +65,7 @@ jobs:
         run: |
           # We run openhands in headless mode targeting the current workspace
           # The agent will edit files in-place
-          openhands --headless --override-with-envs --task "Fix the following issue: $ISSUE_TITLE. Description: $ISSUE_BODY" || echo "Agent exited with non-zero status but may have made partial progress"
+          openhands --headless --override-with-envs --task "Analyze the following issue carefully: '$ISSUE_TITLE'. Description: '$ISSUE_BODY'. FIRST, verify if the bug actually exists in the current codebase. If the issue describes a non-existent problem, a misunderstanding, or a feature that already works perfectly, DO NOT modify any files and finish the task. Only modify files if you genuinely find the root cause of the described issue." || echo "Agent exited with non-zero status but may have made partial progress"
 
       - name: Check for changes and create Pull Request
         id: create_pr

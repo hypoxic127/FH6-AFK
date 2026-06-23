@@ -20,12 +20,6 @@
 
 ## 🎬 Demo
 
-<!--
-  Record a short (10-20s) screen capture of one full loop tick — state detection,
-  the bot navigating a menu, and the live log updating — export it as docs/demo.gif,
-  and it will render here automatically. A GIF is the single highest-converting
-  element in a README; keep it under ~10 MB so GitHub inlines it.
--->
 <p align="center">
   <img src="docs/demo.gif" alt="FH6 AutoBot — autonomous farm loop in action" width="640">
 </p>
@@ -36,8 +30,6 @@
 
 ## 📸 Dashboard
 
-<!-- Capture the web UI at http://localhost:6800 (with the bot running so the log
-     stream and counters are populated) and save it as docs/dashboard.png. -->
 <p align="center">
   <img src="docs/dashboard.png" alt="FH6 AutoBot — Web UI Dashboard" width="820">
 </p>
@@ -114,21 +106,6 @@ A few engineering details that make this more than a click-recorder:
 - **Triple Verification** — OCR keywords (2/3 match) + NEW yellow tag + LEGENDARY orange rarity
 - **Cannot Afford Detection** — Auto-dismisses popup, stops purchasing
 
-### 📦 Build & Packaging
-
-- **PyInstaller --onefile** — Single ~50MB executable
-- **Runtime Path Layer** — `engine/runtime.py` unified path resolution (dev/packaged dual-mode)
-- **UTF-8 Console Fix** — `hook_utf8.py` resolves Chinese log garbling on Windows
-
-### 🔄 Auto-Update System
-
-- **Integer Tuple Version Comparison** — `(1,5,10) > (1,5,9)`, no string comparison bugs
-- **Transactional File Replacement** — Rollback on failure (never bricks the installation)
-- **Multi-Mirror Download** — Direct GitHub → ghproxy fallback chain (3 mirrors)
-- **Infinite Restart Prevention** — Filters `--update` from `sys.argv` before restarting
-- **Rate Limit Protection** — 1-hour API cache, respects GitHub's 60 req/hr limit
-- **Global Update Lock** — Prevents concurrent downloads from Web UI + CLI
-
 ### 🛡️ Self-Healing Screenshot
 
 - **BitBlt Failure Recovery** — Auto-resets MSS instance when GDI device context is corrupted
@@ -160,6 +137,7 @@ A few engineering details that make this more than a click-recorder:
 - [🗺️ Roadmap](#️-roadmap)
 - [🧪 Testing & CI](#-testing--ci)
 - [🤝 Contributing](#-contributing)
+- [⚠️ Disclaimer](#️-disclaimer)
 - [📝 License](#-license)
 
 ---
@@ -413,9 +391,19 @@ PRs welcome — fork → branch (`git checkout -b feat/...`) → commit → push
 
 ---
 
+## ⚠️ Disclaimer
+
+FH6 AutoBot is provided for **educational and personal use only**. Automating gameplay may
+violate the game's Terms of Service and could result in penalties or an account ban — **use it
+at your own risk**. This is an independent, fan-made tool, **not affiliated with, endorsed by,
+or associated with the developers or publisher** of any game it interacts with. The authors
+accept no liability for any consequences of its use.
+
+---
+
 ## 📝 License
 
-This project is for **learning and personal use** only.
+For **learning and personal use** only — see [LICENSE](LICENSE).
 
 ---
 

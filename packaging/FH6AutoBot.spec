@@ -46,10 +46,6 @@ a = Analysis(
         ), os.path.join("vgamepad", "win", "vigem", "client")),
         # Web UI 静态文件
         (os.path.join(PROJECT_ROOT, "web", "static"), os.path.join("web", "static")),
-        # Tesseract OCR 引擎
-        (os.path.join(PROJECT_ROOT, "tools", "tesseract"), os.path.join("tools", "tesseract")),
-        # ViGEmBus 驱动安装包
-        (os.path.join(PROJECT_ROOT, "tools", "drivers"), os.path.join("tools", "drivers")),
     ],
     hiddenimports=[
         "engine",
@@ -124,6 +120,12 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+# 动态添加可选依赖目录（避免在 GitHub Actions 等无该目录的环境下打包报错）
+for opt_dir in ["tesseract", "drivers"]:
+    opt_path = os.path.join(PROJECT_ROOT, "tools", opt_dir)
+    if os.path.exists(opt_path):
+        a.datas.append((opt_path, os.path.join("tools", opt_dir)))
 
 # === 后处理: 移除不需要的大文件 ===
 # 从 binaries 列表中排除 OpenCV ffmpeg DLL 和 OpenBLAS（共节省 ~47 MB）

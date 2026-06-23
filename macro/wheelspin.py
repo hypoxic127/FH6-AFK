@@ -298,8 +298,6 @@ def _handle_duplicate_car(hwnd, gamepad, sell_threshold: int) -> dict:
 
 def perform_wheelspin(hwnd, gamepad, max_spins: int, sell_threshold: int = 250_000) -> int:
     """执行连续抽奖。Returns: 完成抽奖的次数。"""
-    from macro.core import archive_wheelspin_to_file
-
     detector = get_detector()
 
     if not navigate_to_wheelspin(hwnd, gamepad):

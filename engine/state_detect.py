@@ -359,6 +359,129 @@ class StateDetector:
         has_class = "s2" in text or "889" in text
         return has_brand and has_class
 
+    # ===================================================================
+    #  F. Super Wheelspin 检测 (OCR + HSV)
+    # ===================================================================
+
+    def check_wheelspin_ui(self, resized):
+        """检测是否在 Super Wheelspin 界面（结果/动画页徽标 或 MY HORIZON 菜单磁贴）。
+
+        两个手动校准 ROI 任一命中 'wheelspin'/'super' 即为 True：
+          - 结果/动画页徽标: h21.89-56.44%, w3.19-24.87%
+          - MY HORIZON 菜单磁贴: h24.44-77.67%, w12.50-27.56%
+        ('wheels' 是稳定读出的词干，wheelspin 常被切成 wheels + pin)
+        """
+        h, w = resized.shape[:2]
+        for y1, y2, x1, x2 in (
+            (0.2189, 0.5644, 0.0319, 0.2487),  # 结果/动画页徽标
+            (0.2444, 0.7767, 0.1250, 0.2756),  # MY HORIZON 菜单磁贴
+        ):
+            roi = resized[int(h * y1) : int(h * y2), int(w * x1) : int(w * x2)]
+            if roi.size == 0:
+                continue
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)
+            text = pytesseract.image_to_string(thresh, config="--psm 6").strip().lower()
+            if "wheels" in text or "super" in text:
+                return True
+        return False
+
+    def check_spin_again(self, resized):
+        """检测结果页底栏左按钮是否为 'Collect Prize and Spin Again'。
+
+        ROI h92-97%, w3-26%（深底白字按钮）。命中 'again' 表示还能继续转；
+        仅 'Collect Prize'（无 again）则为最后一抽，返回 False。
+        """
+        h, w = resized.shape[:2]
+        roi = resized[int(h * 0.92) : int(h * 0.97), int(w * 0.03) : int(w * 0.26)]
+        if roi.size == 0:
+            return False
+        brightness = float(np.mean(roi))
+        if brightness < 10 or brightness > 235:
+            return False
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+        text = pytesseract.image_to_string(thresh, config="--psm 7").strip().lower()
+        return "again" in text
+
+    def check_car_already_owned(self, resized):
+        """检测 'Car Already Owned' 弹窗。
+
+        双重校验：(1) 顶部黄绿横幅 HSV 像素 (H≈28-48) 足够多；
+        (2) 横幅 OCR 命中 'already' 或 'owned'。
+        """
+        h, w = resized.shape[:2]
+        banner = resized[int(h * 0.17) : int(h * 0.25), int(w * 0.33) : int(w * 0.66)]
+        if banner.size == 0:
+            return False
+        hsv = cv2.cvtColor(banner, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, np.array([28, 120, 120]), np.array([48, 255, 255]))
+        if cv2.countNonZero(mask) < 3000:
+            return False
+        gray = cv2.cvtColor(banner, cv2.COLOR_BGR2GRAY)
+        # 黄绿亮底 + 黑字 → THRESH_BINARY 得到黑字白底，利于 OCR
+        _, thresh = cv2.threshold(gray, 110, 255, cv2.THRESH_BINARY)
+        text = pytesseract.image_to_string(thresh, config="--psm 7").strip().lower()
+        return "already" in text or "owned" in text
+
+    def check_collect_prize(self, resized):
+        """检测结果页底栏是否出现 'Collect Prize' 提示（抽奖结果已就绪）。
+
+        ROI h92-99%, w2-26%（底栏左侧按钮）。与 check_spin_again 配合判定：
+        命中 'collect' 但未命中 'again' → 最后一抽（Spins Remaining = 0），抽奖结束
+        （见 debug/Wheelspinend.png：底栏只剩 'Collect Prize'）。
+        """
+        h, w = resized.shape[:2]
+        roi = resized[int(h * 0.92) : int(h * 0.99), int(w * 0.02) : int(w * 0.26)]
+        if roi.size == 0:
+            return False
+        brightness = float(np.mean(roi))
+        if brightness < 10 or brightness > 235:
+            return False
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+        text = pytesseract.image_to_string(thresh, config="--psm 7").strip().lower()
+        return "collect" in text
+
+    def check_skip_visible(self, resized) -> bool:
+        """检测抽奖动画期间左下角 'Ⓐ Skip' 提示是否可见。
+
+        纯像素方案，<1ms，适合快速轮询。三重校验：
+          1) 绿色 Ⓐ 按钮图标（HSV 绿色像素占比）
+          2) 白色 "Skip" 文字区域（亮度 >200 像素占比）
+          3) 排除更长的文字（Select / Collect Prize），检查扩展区域无文字
+        """
+        h, w = resized.shape[:2]
+
+        # 1) 绿色 Ⓐ 按钮: h92-94.5%, w4-6%
+        btn_roi = resized[int(h * 0.92) : int(h * 0.945), int(w * 0.04) : int(w * 0.06)]
+        if btn_roi.size == 0:
+            return False
+        hsv = cv2.cvtColor(btn_roi, cv2.COLOR_BGR2HSV)
+        green_mask = cv2.inRange(hsv, np.array([40, 50, 50]), np.array([80, 255, 255]))
+        if float(cv2.countNonZero(green_mask)) / green_mask.size < 0.10:
+            return False
+
+        # 2) 白色 "Skip" 文字: h92-94.5%, w5.8-8%
+        text_roi = resized[int(h * 0.92) : int(h * 0.945), int(w * 0.058) : int(w * 0.08)]
+        if text_roi.size == 0:
+            return False
+        gray = cv2.cvtColor(text_roi, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+        if float(np.sum(thresh == 255)) / thresh.size < 0.05:
+            return False
+
+        # 3) 排除更长的文字: w8-12% 区域应无白色文字
+        #    Skip → 0.00, Select → 0.04+, Collect Prize → 0.15+
+        extra_roi = resized[int(h * 0.92) : int(h * 0.945), int(w * 0.08) : int(w * 0.12)]
+        if extra_roi.size:
+            extra_gray = cv2.cvtColor(extra_roi, cv2.COLOR_BGR2GRAY)
+            _, extra_thresh = cv2.threshold(extra_gray, 200, 255, cv2.THRESH_BINARY)
+            if float(np.sum(extra_thresh == 255)) / extra_thresh.size > 0.02:
+                return False
+
+        return True
+
 
 # ===================================================================
 #  模块级单例：避免在热路径中反复实例化 StateDetector

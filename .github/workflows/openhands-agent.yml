@@ -56,7 +56,7 @@ jobs:
         id: openhands
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          LLM_MODEL: ${{ secrets.LLM_MODEL || 'gemini-1.5-pro' }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           # Some litellm configurations prefer the explicit provider key
           GEMINI_API_KEY: ${{ secrets.LLM_API_KEY }}

@@ -212,7 +212,13 @@ For **learning and personal use** only — see [LICENSE](LICENSE).
 
 ## ⭐ Star History
 
-[![Star History Chart](https://starchart.cc/hypoxic127/FH6-AFK.svg)](https://star-history.com/#hypoxic127/FH6-AFK&Date)
+<a href="https://www.star-history.com/?repos=hypoxic127%2FFH6-AFK&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=hypoxic127/FH6-AFK&type=date&theme=dark&legend=top-left&sealed_token=Bp9u-MZzbjx0xyFTnrBjjFZBtcbetC3r56Kev18GuCZ_NGGICPjJMc2WnC93L1u8gbdElsKtA_r3pmiSmciEQEbypBg30sNo3333snZ3Pr2IUEkitMrIwclOHclvwa2uYJXssve8eguArm0AbukUzu8sGUl6MTlQfdHEDKl28ei3YTygvCTFbHY7aIIg" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=hypoxic127/FH6-AFK&type=date&legend=top-left&sealed_token=Bp9u-MZzbjx0xyFTnrBjjFZBtcbetC3r56Kev18GuCZ_NGGICPjJMc2WnC93L1u8gbdElsKtA_r3pmiSmciEQEbypBg30sNo3333snZ3Pr2IUEkitMrIwclOHclvwa2uYJXssve8eguArm0AbukUzu8sGUl6MTlQfdHEDKl28ei3YTygvCTFbHY7aIIg" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=hypoxic127/FH6-AFK&type=date&legend=top-left&sealed_token=Bp9u-MZzbjx0xyFTnrBjjFZBtcbetC3r56Kev18GuCZ_NGGICPjJMc2WnC93L1u8gbdElsKtA_r3pmiSmciEQEbypBg30sNo3333snZ3Pr2IUEkitMrIwclOHclvwa2uYJXssve8eguArm0AbukUzu8sGUl6MTlQfdHEDKl28ei3YTygvCTFbHY7aIIg" />
+ </picture>
+</a>
 
 ---
 

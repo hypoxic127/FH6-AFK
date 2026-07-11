@@ -212,7 +212,7 @@ For **learning and personal use** only — see [LICENSE](LICENSE).
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=hypoxic127/FH6-AFK&type=Date)](https://star-history.com/#hypoxic127/FH6-AFK&Date)
+[![Star History Chart](https://starchart.cc/hypoxic127/FH6-AFK.svg)](https://star-history.com/#hypoxic127/FH6-AFK&Date)
 
 ---
 

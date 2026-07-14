@@ -194,14 +194,10 @@ def run_master_bot_loop(
                         # 触发条件 2: Available Points < 30 → 技能点不足，进入删车
                         if remaining_points is not None and remaining_points < 30:
                             log_info(t("loop.pts_low", pts=remaining_points))
-                            # B × 2 退出技能树
-                            log_info(t("general.b_x", n=2))
+                            # B × 1 退出车库网格到主菜单
+                            log_info(t("general.b_x", n=1))
                             _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
-                            _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
-                            # Up × 1
-                            log_info(t("general.up_x", n=1))
-                            _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, delay=0.5)
-                            # A × 1
+                            # A × 1 重新进入以刷新并复位光标
                             log_info(t("general.enter_garage"))
                             _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
                             # LB 扫描 Subaru 页面标签
@@ -221,7 +217,11 @@ def run_master_bot_loop(
                             _scan_for_subaru_page(hwnd, gamepad)
                             break
 
-                        return_to_garage(hwnd, gamepad)
+                        # B × 1 退出车库网格到主菜单，然后 A × 1 重新进入以刷新网格并复位光标
+                        log_info("  -> Re-entering garage to refresh grid...")
+                        _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_B, delay=1.0)
+                        _press_button(gamepad, vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=2.0)
+                        _scan_for_subaru_page(hwnd, gamepad)
 
                     log_success(t("loop.upgrade_done", count=upgraded_count - 1))
                     current_state = STATE_TRASH_CARS

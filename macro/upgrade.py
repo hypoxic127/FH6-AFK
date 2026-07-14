@@ -191,5 +191,10 @@ def action_upgrade_car_skills(hwnd, gamepad, min_points=30):
     press(vg.XUSB_BUTTON.XUSB_GAMEPAD_A, delay=1.5)
     if afford_failed:
         _check_cannot_afford("步骤11")
+
+    # 12. 输入 B × 2（退出技能树）
+    log_info("  -> [12] B × 2...")
+    press(vg.XUSB_BUTTON.XUSB_GAMEPAD_B, count=2, delay=1.0)
+
     log_success(t("upgrade.done"))
     return available_points  # 返回剩余点数

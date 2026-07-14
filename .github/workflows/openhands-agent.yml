@@ -141,13 +141,13 @@ jobs:
             
             if (hasResponse && fs.existsSync('/tmp/issue_response.txt')) {
               const agentResponse = fs.readFileSync('/tmp/issue_response.txt', 'utf8');
-              message += `💡 **OpenHands Agent 分析回复:**\n\n${agentResponse}\n\n---\n`;
+              message += `💡 **OpenHands Agent Analysis & Response:**\n\n${agentResponse}\n\n---\n`;
             }
             
             if (createdPr) {
-              message += `✅ OpenHands 修复了代码并创建了 Pull Request: [点击查看改动](${process.env.PR_URL})`;
+              message += `✅ OpenHands has resolved the issue and created a Pull Request: [Click here to view changes](${process.env.PR_URL})`;
             } else if (!hasResponse) {
-              message += `❌ OpenHands 运行结束，没有发现需要修改的代码，也没有留下回复。请检查 Action 日志。`;
+              message += `❌ OpenHands finished execution without modifying any code or leaving a response. Please check the Action logs.`;
             }
             
             if (message !== '') {
